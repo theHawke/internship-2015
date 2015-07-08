@@ -1,0 +1,9 @@
+# python
+*.pyc
+
+# latex
+*.aux
+*.synctex.gz
+*.log
+*.tex.bak
+
