@@ -42,7 +42,7 @@ plt.title('Fisher Iris Data')
 
 
 ## model
-classy = NaiveBayes()
+classy = SVM(kernel='rbf')
 classy.train(X, y)
 
 

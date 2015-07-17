@@ -37,8 +37,8 @@ plt.ylabel('Petal Length')
 plt.title('Fisher Iris Data')
 
 
-## model, works with both OVA and OVO
-multi_classy = OVO(3, DA())
+## model, works with OVA, OVO, NaiveBayes, kNN
+multi_classy = kNN(k=1)
 multi_classy.train(X, y)
 
 

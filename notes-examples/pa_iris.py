@@ -8,6 +8,7 @@ from matplotlib.colors import ListedColormap
 from sklearn.datasets import make_classification
 from sklearn.preprocessing import StandardScaler
 from random import shuffle
+from m2l2.classification import PA
 import csv
 
 with open('iris.data', 'rb') as csvfile:
@@ -34,20 +35,9 @@ ax.set_ylim(y_min, y_max)
 
 
 ## my implementation: passive-aggressive algorithm
-X = np.column_stack((np.ones(y.size),X))
-ci = np.array([-1 if x == 0 else 1 for x in y])
-
-w = np.array([0,1,-1])
-
-ws = np.empty((y.size,3))
-
-for i in range(y.size):
-    if ci[i]*np.dot(w,X[i]) < 1:
-        f = lambda x: np.dot(x-w,x-w)
-        fp = lambda x: 2*(x-w)
-        cons = lambda x: ci[i]*np.dot(x,X[i]) - 1
-        w = fmin_slsqp(f, X[i]/np.dot(X[i],X[i]), eqcons=[cons], fprime=fp)
-    ws[i] = w
+classy = PA()
+classy.train(X,y)
+ws = classy.ws
 
 linef = lambda x, st: -x*st[0]/st[1] + (st[0]**2 + st[1]**2)/st[1]
 
@@ -63,7 +53,7 @@ def init_func():
     return line,scatter
 
 def update_plot(i):
-    scatter = ax.scatter(X[:i+1,1], X[:i+1,2], c=y[:i+1], cmap=cm_bright)
+    scatter = ax.scatter(X[:i+1,0], X[:i+1,1], c=y[:i+1], cmap=cm_bright)
 
     st = -ws[i,0]*ws[i,1:3]/np.dot(ws[i,1:3],ws[i,1:3])
     line.set_data([x_min, x_max],[linef(x_min, st), linef(x_max, st)])
@@ -73,6 +63,6 @@ def update_plot(i):
 an = ani.FuncAnimation(fig, update_plot, frames=range(y.size), blit=True,
                        init_func=init_func, interval=500, repeat=False)
 
-#fig.show()
+fig.show()
 
-an.save("pa_iris.mp4")
+#an.save("pa_iris.mp4")

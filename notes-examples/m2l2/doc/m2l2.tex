@@ -3,7 +3,9 @@
 \usepackage{amsmath}
 \usepackage{amsfonts}
 \usepackage{amssymb}
+\usepackage{bm}
 \usepackage{listings}
+\usepackage{hyperref}
 
 \lstset{language=python}
 
@@ -17,14 +19,16 @@
 
 \section{Introduction}
 \subsection{About this library}
-"m$^2$l$^2$" is a small machine learning library I have written / am writing during my summer 2015 internship at the Cavendish Laboratory Lab for Scientific Computing (LSC). The purpose of the library is not to be much use for actual machine learning, instead it is mostly an educational tool for me (and maybe others). There exist mature machine learning libraries for many languages (e.g. 'scikit-learn' for python) and I have neither the expertise nor the time to implement the algorithms in a complete (all the different options and statistical considerations) and efficient (well-optimised) manner.
+"m$^2$l$^2$" is a small machine learning library I have written / am writing during my summer 2015 internship at the Cavendish Laboratory Lab for Scientific Computing (LSC). The purpose of the library is not to be much use for actual machine learning, instead it is mostly an educational tool for me (and maybe others). There exist mature machine learning libraries for many languages (e.g. \texttt{scikit-learn} for python) and I have neither the expertise nor the time to implement the algorithms in a complete (all the different options and statistical considerations) and efficient (well-optimised) manner.
 
 
 \section{Structure}
 The library is divided into several modules corresponding to different general areas in machine learning. This section will give an overview of how the algorithms in the different modules are used, while section 3 contains documentation for each individual algorithm.
 
-\subsection{\lstinline$m2l2.classification$}
-The algorithms in this module deal with the task of classification, i.e. deciding what class $\mathrm{C}_k, k \in \{0 \ldots K-1\}$ a set of features (feature vector $\mathbf{x} = \{x_0, x_1, \ldots, x_n\}$) belongs to based on a set of training data $\{(\mathbf{x}_i, c_i)\}, c_i \in \{\mathrm{C}_k\}$.
+In general, for iterative algorithms, the class will contain a method called \texttt{getIterationData(i)} which will return the relevant data from the \texttt{i}th iteration. The return type varies with the algorithm, so this is not an interface where different algorithms can just be swapped out in general (there may be groups of algorithms with similar intermediate data).
+
+\subsection{\texttt{m2l2.classification}}
+The algorithms in this module deal with the task of classification, i.e. deciding what class $\mathcal{C}_k, k \in \{0 \ldots K-1\}$ a set of features (feature vector $\mathbf{x} = \{x_0, x_1, \ldots, x_n\}$) belongs to based on a set of training data $\{(\mathbf{x}_i, c_i)\}, c_i \in \{\mathcal{C}_k\}$.
 
 The algorithms are implemented as classes to retain the parameters and training data given. After a classifier is created (in some cases taking parameters for the algorithm), it can be trained on some training data. Once it is trained it can be used to classify further feature vectors.
 
@@ -52,5 +56,34 @@ class Classifier:
 
 
 \section{Documentation}
+This section contains some information on each of the algorithms implemented in this library. Usually the information is mostly on my implementation, motivation for them and derivation should be found in the relevant textbook or lecture notes of your choice.
+
+\subsection{\texttt{m2l2.classification}}
+\subsubsection{Gaussian Naive Bayes' (as class \texttt{NaiveBayes()})}
+The Gaussian Naive Bayes' classifier assumes that the data comes from multivariate Gaussian distributions with mean $\bm{\mu}$ and covariance matrix $\bm{\Sigma}$ which we estimate from the training data. This gives a likelihood $p(\mathbf{x} | \mathcal{C}_k) = \mathcal{N}(\mathbf{x} | \bm{\mu}_k, \bm{\Sigma}_k) = \frac{1}{\sqrt{2 \pi |\bm{\Sigma}_k|}} \exp\left(\frac{1}{2} (\mathbf{x} - \bm{\mu}_k)^T\bm{\Sigma}_k^{-1}(\mathbf{x} - \bm{\mu}_k)\right)$ and using the number of training points for each class as the prior probability we get the posterior probability $p(\mathcal{C}_k | \mathbf{x}) \propto \mathcal{N}(\mathbf{x} | \bm{\mu}_k, \bm{\Sigma}_k) p(\mathcal{C}_k)$ from Bayes' Theorem. A point is then classified by which class gives the maximum posterior probability.
+
+The implementation can be used for both binary and multi-class classification, the number of classes used is determined by the keyword argument \texttt{K} of the constructor (default is 2).
+    
+\subsubsection{Discriminant Analysis (as class \texttt{DA()})}
+Discriminant Analysis is implemented as a binary classifier in both the linear and the quadratic variant. A point $\mathbf{x}$ is classified according to the sign of $\mathbf{x}^T\mathbf{Ax} + \mathbf{bx} + c$ where
+\begin{align*}
+\mathbf{A} &= \frac{1}{2} \left(\bm{\Sigma}_1^{-1} - \bm{\Sigma}_0^{-1}\right) \\
+\mathbf{b} &= \bm{\Sigma}_0^{-1}\bm{\mu}_0 - \bm{\Sigma}_1^{-1}\bm{\mu}_1 \\
+c &= \frac{1}{2} \left( \log\frac{|\bm{\Sigma}_1|}{|\bm{\Sigma}_0|} + \bm{\mu}_1^T\bm{\Sigma}_1^{-1}\bm{\mu}_1 - \bm{\mu}_0^T\bm{\Sigma}_0^{-1}\bm{\mu}_0 \right) \\
+\end{align*}
+and $\bm{\mu}_0$, $\bm{\mu}_1$, $\bm{\Sigma}_0$ and $\bm{\Sigma}_1$ are estimated from the training data and in the linear case, we assume $\bm{\Sigma}_0 = \bm{\Sigma}_1 \equiv \bm{\Sigma}$, which makes $\mathbf{A}$ vanish.
+
+The constructor takes a keyword argument \texttt{datype} which can be set to \texttt{`quadratic'} to use QDA, otherwise LDA is used.
+
+\subsubsection{k-Nearest-Neighbours (as class \texttt{kNN()})}
+The k-Nearest-Neighbours algorithm is implemented with a kd-tree from the \texttt{scipy} library, since classification would otherwise have complexity $O(n + k \log n)$ per point where $n$ is the number of training points. The kd-tree manages to reduce this complexity to $O(k \log n)$, however it gets less effective if the number of dimensions is large.
+
+The number of nearest neighbours used is determined by the keyword argument \texttt{k} of the constructor (default is 3).
+
+\subsubsection{Support Vector Machine (as class \texttt{SVM()})}
+The implementation of the SVM can use different kernels which can be set with the \texttt{kernel} keyword argument of the constructor. The default is a linear kernel, the argument \texttt{`rbf'} can be used to specify that the inbuilt gaussian radial basis function should be used and \texttt{`custom'} allows any kernel to be specified. If the rbf is used, the keyword argument \texttt{sigma} can be used to specify its width. The custom kernel function needs to be supplied via the \texttt{customK} argument and should be a function of two arguments, which should be able to handle being given a list of points for either argument to operate in a vectorised manner (actually, additionally it needs to accept \texttt{self} as its first argument).
+
+\subsubsection{One vs. All and One vs. One (as classes \texttt{OVA()} and \texttt{OVO()})}
+These two are a sort of meta-classifier, using any binary classifier to create a multi-class classifier. The number of classes and the base classifier are passed to the constructor in both cases. They differ in the approach and the total number of classifiers used. The One vs. All (also called One vs. Rest or One vs. Many) uses $K$ classifiers, where the One vs. One classifier uses $\frac{K(K-1)}{2} = O(K^2)$ classifiers.
 
 \end{document}

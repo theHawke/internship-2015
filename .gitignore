@@ -6,6 +6,8 @@
 *.synctex.gz
 *.log
 *.tex.bak
+*.out
+*.dvi
 
 *.pdf
 *~

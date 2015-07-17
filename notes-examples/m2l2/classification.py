@@ -3,7 +3,8 @@
 import numpy as np
 from copy import copy
 from heapq import heapify, heappop
-from scipy.optimize import fmin_tnc
+from scipy.optimize import fmin_tnc, fmin_slsqp
+from scipy.spatial import KDTree
 
 def GaussLikely(xy, mu, icov, dcov):
     """Inverse and determinant of the covariance matrix are
@@ -90,32 +91,72 @@ class DA:
 
 
 class kNN:
-    """A k-Nearest-Neighbours classifier (implementation not (yet) very efficient)"""
+    """A k-Nearest-Neighbours classifier (implemented using KDTrees)"""
 
-    def __init__(self, k = 7):
-        self._k = k
+    def __init__(self, k = 3):
+        self._k = k # number of nearest neighbours
 
     def train(self, X, y):
-        self._X = X
+        self._T = KDTree(X)
         self._y = y
-        self._K = np.unique(y).size
+        self._K = np.max(y) + 1 # number of classes
 
     def classify(self, x):
-        # implementation is very inefficient, has complexity
-        # O(|X| + k log|X|) for every call to classify
+        # query the KDTree
+        dist, ind = self._T.query(x, k=self._k)
 
-        # build min-heap wrt distance from x
-        h = [(np.linalg.norm(p-x), c) for (p, c) in zip(self._X, self._y)]
-        heapify(h)
+        # for k == 1, KDTree.query returns only a value, not a list
+        if self._k == 1:
+            return self._y[ind]
 
-        # use the k nearest neighbours to determine class
-        # if there is a tie, use next nearest neighbours to break it
-        c = np.zeros(self._k)
-        i = 0
-        while i < self._k or np.size(c[c == np.max(c)]) > 1:
-            c[heappop(h)[1]] += 1
-            i += 1
-        return np.argmax(c)
+        # count occurences of each class
+        count = np.zeros(self._K)
+        for i in ind:
+            count[self._y[i]] += 1
+        if np.size(count[count == np.max(count)]) == 1:
+            # if there is a single class with the most nearest
+            # neighbours, return it
+            return np.argmax(count)
+        else:
+            # if there are multiple classes with nearest neighbours,
+            # return the one with smallest mean distance
+            cls = np.argwhere(count == np.max(count)).flatten()
+            return cls[np.argmin([np.mean(dist[ind == cl]) for cl in cls])]
+
+
+class PA:
+    """Passive-Aggressive online-learning algorithm"""
+
+    def train(self, X, y):
+        # add bias component to each vector
+        X = np.column_stack((np.ones(y.size),X))
+
+        # label classes as -1, 1 instead of 0, 1
+        ci = np.array([-1 if x == 0 else 1 for x in y])
+
+        # initialise w
+        w = np.zeros(X.shape[1])
+
+        # create array to keep track of history
+        self.ws = np.empty(X.shape)
+
+        for i in range(y.size):
+            if ci[i]*np.dot(w,X[i]) < 1:
+                f = lambda x: np.dot(x-w,x-w)
+                dfdx = lambda x: 2*(x-w)
+                cons = lambda x: ci[i]*np.dot(x,X[i]) - 1
+                # perform the constrained minimisation
+                w = fmin_slsqp(f, X[i]/np.dot(X[i],X[i]),
+                               eqcons=[cons], fprime=dfdx, disp=0)
+            self.ws[i] = w
+
+        self._w = w
+
+    def classify(self, x):
+        return self._w[0] + np.dot(x, self._w[1:])
+
+    def getIterationData(self, i):
+        return self.ws[i]
 
 
 def abssq(x):
@@ -177,7 +218,9 @@ class SVM:
         self._SV = X[self.alpha != 0]
 
     def classify(self, x):
-        xh = np.concat(np.ones(1), x) # add bias component
+        if x.ndim > 1:
+            return np.array([self.classify(xi) for xi in x])
+        xh = np.concatenate((np.ones(1), x)) # add bias component
         return np.sum(self._aci*self._kernel(self._SV,xh))
 
 
@@ -229,7 +272,7 @@ class OVO:
         #
         self._clsf = [[copy(classifier) for j in range(i)]
                       for i in range(K)]
-        self._K = K
+        self._K = K # number of classes
 
     def train(self, X, y):
         """Classes should be labeled 0 to num_classes-1"""
