@@ -75,9 +75,9 @@ def haarbasis(n, scale = 0):
 
 
 
-basis16 = haarbasis(4,1).reshape(256,256).transpose()
+basis8 = haarbasis(3,1).reshape(64,64).transpose()
 
-blocks = misc.lena().reshape(32,16,32,16).transpose(0,2,1,3).reshape(1024,256)
+blocks = misc.lena().reshape(64,8,64,8).transpose(0,2,1,3).reshape(4096,64)
 
 def uncompress(pos, val, n):
     arr = np.zeros(n)
@@ -85,5 +85,16 @@ def uncompress(pos, val, n):
         arr[pos[i]] = val[i]
     return arr
 
-#plt.imshow(invhaart(tf), cmap = cm.Greys_r)
+def recover_block(block):
+    w, ssq, rel, a = rvm(block, np.ones_like(block), basis8)
+    weights = uncompress(rel, w, 64)
+    print("block done")
+    return np.dot(basis8, weights)
+
+print("reconstructing")
+#rec_im = np.array([recover_block(b) for b in blocks]).reshape(64,64,8,8).transpose(0,2,1,3).reshape(512,512)
+
+
+
+#plt.imshow(rec_im, cmap = cm.Greys_r)
 #plt.show()

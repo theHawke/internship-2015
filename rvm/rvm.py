@@ -1,4 +1,4 @@
-#!/usr/bin/python
+2#!/usr/bin/python
 # -*- coding: utf-8 -*-
 import numpy as np
 
@@ -15,23 +15,25 @@ def rvm(y, data_mask, Psi):
     Phi = np.dot(Omega, Psi)
 
     alpha = np.ones(N)
-    beta = 10
+    beta = 1
 
-    alpha_t = 10000000000
-    delta_t = 0.0000000001
+    alpha_t = 100000000
+    delta_t = 0.00000001
 
     relevant = np.arange(N)
+
+    i = 0
 
     while True:
         Sigma = np.linalg.inv(np.diag(alpha) + beta*np.dot(Phi.T, Phi))
         mu = beta * np.dot(Sigma, np.dot(Phi.T, y))
-        gamma = alpha*np.diag(Sigma)
+        gamma = 1 - alpha*np.diag(Sigma)
 
         alpha_old = alpha
 
-        alpha = (1-gamma)/mu**2
+        alpha = gamma/mu**2
 
-        beta = np.sum(gamma)/np.sum((y - np.dot(Phi, mu))**2)
+        beta = (alpha.size - np.sum(gamma))/np.sum((y - np.dot(Phi, mu))**2)
 
         mask = np.ones_like(alpha)
         do_mask = False
@@ -45,6 +47,10 @@ def rvm(y, data_mask, Psi):
             alpha = np.compress(mask, alpha)
             Phi = np.compress(mask, Phi, axis=1)
             relevant = np.compress(mask, relevant)
+            if alpha.size == 0:
+                return mu, 0, relevant, alpha
 
-        elif np.sum((alpha - alpha_old)**2) < delta_t:
+        elif np.sum(np.abs(alpha - alpha_old)) < delta_t or i > 100:
             return mu, 1/beta, relevant, alpha
+
+        i += 1
