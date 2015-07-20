@@ -46,6 +46,10 @@ plt.title('Fisher Iris Data (clustering)')
 ## model
 km = GaussianMixtureEM(X, n=2)
 
+# set a nice starting position
+km.mu = np.array([[4.5,2.5],[6.5,4]])
+km.E_step()
+
 scatter = ax.scatter(X[:, 0], X[:, 1], c=km.cl, cmap=cm_bright)
 means = ax.scatter(km.mu[:,0], km.mu[:,1], c=np.arange(km._ncl),
                    cmap = cm_bright, marker='+', s=60)
@@ -58,7 +62,7 @@ def update_plot(i):
     km.M_step()
     return scatter, means
 
-an = ani.FuncAnimation(fig, update_plot, frames=100, blit=True,
+an = ani.FuncAnimation(fig, update_plot, frames=40, blit=True,
                        interval=500, repeat=False)
 
 an.save("cluster_iris.mp4")
