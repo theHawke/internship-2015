@@ -6,6 +6,7 @@ import matplotlib.animation as ani
 from matplotlib.colors import ListedColormap
 from numpy.random import shuffle
 from m2l2.clustering import kMeans, GaussianMixtureEM
+from matplotlib.patches import Ellipse
 import csv
 
 ## Data generation
@@ -44,6 +45,12 @@ plt.title('Fisher Iris Data (clustering)')
 
 
 ## model
+def EllipseFromSigma(Sigma, mu):
+    w, v = np.linalg.eigh(Sigma)
+    angle = np.arctan2(v[1,0], v[0,0])
+    return Ellipse(xy=mu, width = w[0]*3, height = w[1]*3,
+                   angle = angle/np.pi*180, fill=False, color='black')
+
 km = GaussianMixtureEM(X, n=2)
 
 # set a nice starting position
@@ -53,14 +60,20 @@ km.E_step()
 scatter = ax.scatter(X[:, 0], X[:, 1], c=km.cl, cmap=cm_bright)
 means = ax.scatter(km.mu[:,0], km.mu[:,1], c=np.arange(km._ncl),
                    cmap = cm_bright, marker='+', s=60)
+ells = [EllipseFromSigma(S, m) for (S, m) in zip(km.Sigma, km.mu)]
+for e in ells: ax.add_artist(e)
 
 ## animation
 def update_plot(i):
     scatter.set_array(km.cl)
     means.set_offsets(km.mu)
+    for i in range(len(ells)):
+        ells[i].remove()
+        ells[i] = EllipseFromSigma(km.Sigma[i], km.mu[i])
+        ax.add_artist(ells[i])
     km.E_step()
     km.M_step()
-    return scatter, means
+    return scatter, means, ells
 
 an = ani.FuncAnimation(fig, update_plot, frames=40, blit=True,
                        interval=500, repeat=False)
