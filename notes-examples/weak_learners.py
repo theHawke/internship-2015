@@ -65,12 +65,68 @@ class OneClass1D:
                        np.exp((xx-self.mu0)**2/(2*self.var0) -
                               (xx-self.mu1)**2/(2*self.var1)) - 1)
 
+class DecisionStump:
+    def __init__(self):
+        return self
+
+    def train(self, X, y, w=None):
+        if w == None:
+            w = np.ones_like(y, dtype=np.float)
+
+        dim = X.shape[1]
+        n = X.shape[0] # == y.size
+
+        minmcl = np.zeors(dim)
+        splitp = np.zeros(dim, dtype=np.float)
+        ltgt = np.zeros(dim)
+
+        for d in range(dim):
+            Xp = X[d]
+            order = np.argsort(Xp)
+
+            left = np.insert(np.cumsum((w*np.logical_not(y))[order]), 0, 0)
+            right = np.append(np.cumsum((w*y)[order][::-1])[::-1], 0)
+            summ = left + right
+            gt = argmin(summ)
+            lt = argmax(summ)
+            gtmcl = summ[gt]
+            ltmcl = Xp.size - summ[lt]
+            if gtmcl < ltmcl:
+                minmcl[d] = gtmcl
+                splitp[d] = gt
+                ltgt[d] = False
+            else:
+                minmcl[d] = ltmcl
+                splitp[d] = lt
+                ltgt[d] = True
+
+        self._d = np.argmin(minmcl)
+        self._ltgt = ltgt[self._d]
+        p = splitp[self._d]
+        self._p = Xp[order[0]] - 1 if p == 0 else ( # left of the leftmost
+                  Xp[order[-1]] + 1 if p == n else ( # right of the rightmost
+                      0.5 * (Xp[order[p-1]] + Xp[order[p]]) # between two points
+                  ))
+
+    def classify(self, x):
+        if x.ndim == 1:
+            xx = x[self._d]
+        elif x.ndim == 2:
+            xx = x[:,self._d]
+
+        if self.ltgt:
+            return (xx > self._p) * 2 - 1
+        else:
+            return (xx < self._p) * 2 - 1
+
+
+
 wl = [[OneClass1D(c, d) for d in range(4)] for c in range(3)]
 for cl in wl:
     for l in cl:
         l.train(X, y)
 
-# Class 1
+## Boosting
 for k in range(len(wl)):
     classk = wl[k]
 

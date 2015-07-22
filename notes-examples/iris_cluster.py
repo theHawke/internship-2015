@@ -1,3 +1,4 @@
+
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 import numpy as np
@@ -48,14 +49,14 @@ plt.title('Fisher Iris Data (clustering)')
 def EllipseFromSigma(Sigma, mu):
     w, v = np.linalg.eigh(Sigma)
     angle = np.arctan2(v[1,0], v[0,0])
-    return Ellipse(xy=mu, width = w[0]*3, height = w[1]*3,
+    return Ellipse(xy=mu, width = w[0]*4, height = w[1]*4,
                    angle = angle/np.pi*180, fill=False, color='black')
 
 km = GaussianMixtureEM(X, n=2)
 
 # set a nice starting position
-km.mu = np.array([[4.5,2.5],[6.5,4]])
-km.E_step()
+#km.mu = np.array([[4.5,2.5],[6.5,4]])
+#km.E_step()
 
 scatter = ax.scatter(X[:, 0], X[:, 1], c=km.cl, cmap=cm_bright)
 means = ax.scatter(km.mu[:,0], km.mu[:,1], c=np.arange(km._ncl),
@@ -75,7 +76,7 @@ def update_plot(i):
     km.M_step()
     return scatter, means, ells
 
-an = ani.FuncAnimation(fig, update_plot, frames=40, blit=True,
+an = ani.FuncAnimation(fig, update_plot, frames=100, blit=True,
                        interval=500, repeat=False)
 
 an.save("cluster_iris.mp4")

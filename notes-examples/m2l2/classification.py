@@ -223,6 +223,92 @@ class SVM:
         return np.sum(self._aci*self._kernel(self._SV,xh))
 
 
+class DecisionStump:
+    def train(self, X, y, w=None):
+        if w == None:
+            w = np.ones_like(y, dtype=np.float)
+
+        dim = X.shape[1]
+        n = X.shape[0] # == y.size
+
+        error = np.zeros(dim, dtype=np.float)
+        splitp = np.zeros(dim, dtype=np.float)
+        ltgt = np.zeros(dim, dtype=np.bool)
+
+        for d in range(dim):
+            Xp = X[:,d]
+            order = np.argsort(Xp)
+
+            left = np.insert(np.cumsum((w*np.logical_not(y))[order]), 0, 0)
+            right = np.append(np.cumsum((w*y)[order][::-1])[::-1], 0)
+            summ = left + right
+
+            gt = np.argmin(summ)
+            lt = np.argmax(summ)
+
+            gtmcl = summ[gt]
+            ltmcl = np.sum(w) - summ[lt]
+
+            if gtmcl < ltmcl:
+                error[d] = gtmcl
+                ltgt[d] = False
+                p = gt
+            else:
+                error[d] = ltmcl
+                ltgt[d] = True
+                p = lt
+
+            splitp[d] = Xp[order[0]] - 1 if p == 0 else ( # left of the leftmost
+                        Xp[order[-1]] + 1 if p == n else ( # right of the rightmost
+                            0.5 * (Xp[order[p-1]] + Xp[order[p]]) # between two points
+                        ))
+
+        self._d = np.argmin(error)
+        self._ltgt = ltgt[self._d]
+        self._p = splitp[self._d]
+
+    def classify(self, x):
+        if x.ndim == 1:
+            xx = x[self._d]
+        elif x.ndim == 2:
+            xx = x[:,self._d]
+
+        if self._ltgt:
+            return (xx > self._p) * 2 - 1
+        else:
+            return (xx < self._p) * 2 - 1
+
+class AdaBoost:
+    def __init__(self, m, baseClassifier = DecisionStump()):
+        self._clsf = [copy(baseClassifier) for _ in range(m)]
+        self._m = m
+
+    def train(self, X, y):
+        wm = np.ones_like(y, dtype=np.float)
+        ci = y * 2 - 1
+        a = np.zeros(self._m, dtype=np.float)
+
+        for m in range(self._m):
+            self._clsf[m].train(X, y, wm)
+
+            mcl = self._clsf[m].classify(X) != ci
+
+            if np.sum(mcl) == 0:
+                a[m] = 1
+                continue
+
+            em = np.sum(wm * mcl)/np.sum(wm)
+            a[m] = np.log((1-em)/em)
+
+            wm *= np.exp(a[m] * mcl)
+
+        self._alpha = a
+
+    def classify(self, x):
+        ym = np.array([c.classify(x) for c in self._clsf])
+        return np.dot(ym, self._alpha)
+
+
 
 class OVA:
     """Use a two-class Classifier to do multi-class classification with
