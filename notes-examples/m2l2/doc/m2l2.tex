@@ -83,7 +83,16 @@ The number of nearest neighbours used is determined by the keyword argument \tex
 \subsubsection{Support Vector Machine (as class \texttt{SVM()})}
 The implementation of the SVM can use different kernels which can be set with the \texttt{kernel} keyword argument of the constructor. The default is a linear kernel, the argument \texttt{`rbf'} can be used to specify that the inbuilt gaussian radial basis function should be used and \texttt{`custom'} allows any kernel to be specified. If the rbf is used, the keyword argument \texttt{sigma} can be used to specify its width. The custom kernel function needs to be supplied via the \texttt{customK} argument and should be a function of two arguments, which should be able to handle being given a list of points for either argument to operate in a vectorised manner (actually, additionally it needs to accept \texttt{self} as its first argument).
 
+\subsubsection{Adaptive Boosting (as class \texttt{AdaBoost()})}
+The implementation of AdaBoost is as detailed in \cite{PRML} using one-level decision trees as weak learners (in the library as \texttt{DecisionBranch()}). The constructor takes as an argument the number of weak learners to use (which should not be chosen too high to avoid overfitting, but should be large enough to capture the structure of the data).
+
+A different weak learner can also be specified with the \texttt{baseClassifier} argument. This classifier should have the same structure as the others in this module, except that it must be able to train on a weighted data set, i.e. it should place more importance on the samples with higher weights. The weight is given as a third argument to the \texttt{train()} function.
+
 \subsubsection{One vs. All and One vs. One (as classes \texttt{OVA()} and \texttt{OVO()})}
 These two are a sort of meta-classifier, using any binary classifier to create a multi-class classifier. The number of classes and the base classifier are passed to the constructor in both cases. They differ in the approach and the total number of classifiers used. The One vs. All (also called One vs. Rest or One vs. Many) uses $K$ classifiers, where the One vs. One classifier uses $\frac{K(K-1)}{2} = O(K^2)$ classifiers.
+
+\begin{thebibliography}{9}
+\bibitem{PRML} C.M. Bishop, \emph{Pattern Recognition and Machine Learning}, Springer, 2007
+\end{thebibliography}
 
 \end{document}

@@ -131,7 +131,7 @@ class PA:
         X = np.column_stack((np.ones(y.size),X))
 
         # label classes as -1, 1 instead of 0, 1
-        ci = np.array([-1 if x == 0 else 1 for x in y])
+        ci = y * 2 - 1
 
         # initialise w
         w = np.zeros(X.shape[1])
@@ -193,7 +193,7 @@ class SVM:
         X = np.column_stack((np.ones(y.size), X))
 
         # label classes as -1, 1 instead of 0, 1
-        ci = np.array([-1 if x == 0 else 1 for x in y])
+        ci = y * 2 - 1
 
         # the outer-product-via-kernel-function of the data,
         # n² invocations of the kernel function
@@ -223,89 +223,123 @@ class SVM:
         return np.sum(self._aci*self._kernel(self._SV,xh))
 
 
-class DecisionStump:
+class DecisionBranch:
+    """A one-level decision tree used as a weak classifier for AdaBoost"""
+
     def train(self, X, y, w=None):
         if w == None:
             w = np.ones_like(y, dtype=np.float)
 
+        # no of dimensions in the input points
         dim = X.shape[1]
+        # number of training points
         n = X.shape[0] # == y.size
 
         error = np.zeros(dim, dtype=np.float)
         splitp = np.zeros(dim, dtype=np.float)
-        ltgt = np.zeros(dim, dtype=np.bool)
+        gtlt = np.zeros(dim, dtype=np.bool)
 
+        # for each dimension, choose the best splitting point
         for d in range(dim):
             Xp = X[:,d]
+            # we need the points ordered in the current dimension
             order = np.argsort(Xp)
 
+            # we want to find the position in the array which gives the
+            # smallest weighted classification error. There are n+1 possible
+            # points, since: i -> class boundary between X[i-1] and X[i].
+            # Assuming class 1 is left of i and class 0 right,
+            # left[i] is the sum of weighted errors up to i from the left,
+            # right[i] is the sum of weighted errors down to i from the right,
             left = np.insert(np.cumsum((w*np.logical_not(y))[order]), 0, 0)
             right = np.append(np.cumsum((w*y)[order][::-1])[::-1], 0)
-            summ = left + right
+            # errsum[i] is the total error if the class boundary is at i
+            errsum = left + right
 
-            gt = np.argmin(summ)
-            lt = np.argmax(summ)
+            # mn is the point with minimum misclassification error 'mcle'
+            mn = np.argmin(errsum)
+            mcle = errsum[mn]
+            # mx is the point with maximum misclassification error.
+            # it is also the point with mimimum error if the classes were
+            # reversed, i.e. class 1 right of boundary , class 0 left
+            mx = np.argmax(errsum)
+            revmcle = np.sum(w) - errsum[mx]
 
-            gtmcl = summ[gt]
-            ltmcl = np.sum(w) - summ[lt]
-
-            if gtmcl < ltmcl:
-                error[d] = gtmcl
-                ltgt[d] = False
-                p = gt
+            # see which way around has better error
+            # and store results for this dimension
+            if mcle <= revmcle:
+                error[d] = mcle
+                gtlt[d] = True
+                p = mn
             else:
-                error[d] = ltmcl
-                ltgt[d] = True
-                p = lt
+                error[d] = revmcle
+                gtlt[d] = False
+                p = mx
 
             splitp[d] = Xp[order[0]] - 1 if p == 0 else ( # left of the leftmost
                         Xp[order[-1]] + 1 if p == n else ( # right of the rightmost
                             0.5 * (Xp[order[p-1]] + Xp[order[p]]) # between two points
                         ))
 
+        # see which dimesion has the best error and set the parameters
         self._d = np.argmin(error)
-        self._ltgt = ltgt[self._d]
+        self._gtlt = gtlt[self._d]
         self._p = splitp[self._d]
 
     def classify(self, x):
+        # for handeling array inputs
         if x.ndim == 1:
             xx = x[self._d]
         elif x.ndim == 2:
             xx = x[:,self._d]
 
-        if self._ltgt:
-            return (xx > self._p) * 2 - 1
-        else:
+        # depending on the chosen direction, label classes 1->1, 0->-1
+        if self._gtlt:
             return (xx < self._p) * 2 - 1
+        else:
+            return (xx > self._p) * 2 - 1
 
 class AdaBoost:
-    def __init__(self, m, baseClassifier = DecisionStump()):
+    """A classifier obtained by combining several weak classifiers"""
+
+    def __init__(self, m, baseClassifier = DecisionBranch()):
+        # construct m copies of the base classifier
         self._clsf = [copy(baseClassifier) for _ in range(m)]
         self._m = m
 
     def train(self, X, y):
+        # initialise w_0 for the iterative process
         wm = np.ones_like(y, dtype=np.float)
+        # label classes as -1, 1 instead of 0, 1
         ci = y * 2 - 1
+        # create array to store alpha_m values
         a = np.zeros(self._m, dtype=np.float)
 
         for m in range(self._m):
+            # train classifier m on weighted training samples
             self._clsf[m].train(X, y, wm)
 
+            # see how much is misclassified
             mcl = self._clsf[m].classify(X) != ci
 
+            # zero misclassification rate breaks the logarithm
             if np.sum(mcl) == 0:
                 a[m] = 1
                 continue
 
+            # weighted misclassification rate
             em = np.sum(wm * mcl)/np.sum(wm)
+            # calculate alpha for this classifier
             a[m] = np.log((1-em)/em)
-
+            # calculate w_{m+1} for the next step
             wm *= np.exp(a[m] * mcl)
 
         self._alpha = a
 
     def classify(self, x):
+        # find individual classifications
         ym = np.array([c.classify(x) for c in self._clsf])
+        # return weighted sum
         return np.dot(ym, self._alpha)
 
 

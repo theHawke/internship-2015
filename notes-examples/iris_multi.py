@@ -2,19 +2,15 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.datasets import load_iris
 from matplotlib.colors import ListedColormap
 from m2l2.classification import SVM, kNN, NaiveBayes, DA, OVA, OVO
-import csv
 
 ## Data generation
-with open('iris.data', 'rb') as csvfile:
-    reader = csv.reader(csvfile, delimiter=',')
-    Xp,yp = zip(*[(row[0:4], row[4]) for row in reader])
-
-classes = {'Iris-setosa': 0, 'Iris-versicolor': 1, 'Iris-virginica': 2}
-
-y = np.array([classes[name] for name in yp])
-X = np.array([np.array([float(f[2]), float(f[3])]) for f in Xp])
+data = load_iris()
+X = data.data
+y = data.target
+X = X[:,[2,3]]
 
 
 ## set up plot

@@ -4,23 +4,17 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as ani
+from sklearn.datasets import load_iris
 from matplotlib.colors import ListedColormap
 from numpy.random import shuffle
 from m2l2.clustering import kMeans, GaussianMixtureEM
 from matplotlib.patches import Ellipse
-import csv
 
 ## Data generation
-with open('iris.data', 'rb') as csvfile:
-    reader = csv.reader(csvfile, delimiter=',')
-    Xy = [(row[0:4], row[4]) for row in reader]
-    shuffle(Xy)
-    Xp,yp = zip(*Xy)
-
-classes = {'Iris-setosa': 0, 'Iris-versicolor': 1, 'Iris-virginica': 2}
-
-y = np.array([classes[name] for name in yp])
-X = np.array([np.array([float(f[0]), float(f[1])]) for f in Xp])
+data = load_iris()
+X = data.data
+y = data.target
+X = X[:,[0,1]]
 X = X[y != 2]
 y = y[y != 2]
 
@@ -55,8 +49,8 @@ def EllipseFromSigma(Sigma, mu):
 km = GaussianMixtureEM(X, n=2)
 
 # set a nice starting position
-#km.mu = np.array([[4.5,2.5],[6.5,4]])
-#km.E_step()
+km.mu = np.array([[4.5,2.5],[6.5,4]])
+km.E_step()
 
 scatter = ax.scatter(X[:, 0], X[:, 1], c=km.cl, cmap=cm_bright)
 means = ax.scatter(km.mu[:,0], km.mu[:,1], c=np.arange(km._ncl),
