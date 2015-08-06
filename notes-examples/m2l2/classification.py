@@ -7,14 +7,16 @@ from scipy.spatial import KDTree
 
 def GaussLikely(xy, mu, icov, dcov):
     """Inverse and determinant of the covariance matrix are
-    passed seperately since they can be precomputed"""
+    passed seperately since they can be precomputed
+    """
     offs = xy - mu
     arg = - np.dot(offs, np.dot(icov, offs)) / 2
     return np.exp(arg) / np.sqrt(2*np.pi*dcov)
 
 class NaiveBayes:
     """A Gaussian Naive Bayes classifier,
-    can do k-class classification"""
+    can do k-class classification
+    """
 
     def __init__(self, K=2):
         self._K = K # number of classes
@@ -46,7 +48,8 @@ class NaiveBayes:
 
 class DA:
     """A Discriminant Analysis classifier, can be used for linear
-    (default) or quadratic discriminant analysis."""
+    (default) or quadratic discriminant analysis.
+    """
 
     def __init__(self, datype='linear'):
         if datype == 'quadratic':
@@ -96,6 +99,9 @@ class kNN:
         self._k = k # number of nearest neighbours
 
     def train(self, X, y):
+        # A KDTree is a datastructure that is aware of the spatial
+        # distribution of its elements and can be used for efficient
+        # nearest neighbour queries
         self._T = KDTree(X)
         self._y = y
         self._K = np.max(y) + 1 # number of classes
@@ -164,7 +170,8 @@ def abssq(x):
 
 class SVM:
     """A two-class Support Vector Machine Classifier,
-    can use a custom kernel function (default is linear)."""
+    can use a custom kernel function (default is linear).
+    """
 
     def _rbf(self, x1, x2):
         """A Gaussian Radial Basis Function for use as a kernel"""
@@ -227,7 +234,7 @@ class DecisionBranch:
     """A one-level decision tree used as a weak classifier for AdaBoost"""
 
     def train(self, X, y, w=None):
-        if w == None:
+        if w is None:
             w = np.ones_like(y, dtype=np.float)
 
         # no of dimensions in the input points
@@ -346,13 +353,15 @@ class AdaBoost:
 
 class OVA:
     """Use a two-class Classifier to do multi-class classification with
-    the One-versus-All (One-versus-Many, One-versus-Rest) strategy"""
+    the One-versus-All (One-versus-Many, One-versus-Rest) strategy
+    """
 
     def __init__(self, K, classifier):
         """The classifier should be an object with the train(X,y) and
         classify(point) methods. The classifier should work on two
         classes labeled '0' and '1' and classify(point) should give a
-        positive score for class '1' and a negative score for class '0'."""
+        positive score for class '1' and a negative score for class '0'.
+        """
         self._clsf = [copy(classifier) for i in range(K)]
         self._K = K
 
@@ -373,13 +382,15 @@ class OVA:
 
 class OVO:
     """Use a two-class Classifier to do multi-class classification with
-    the One-versus-One strategy"""
+    the One-versus-One strategy
+    """
 
     def __init__(self, K, classifier):
         """The classifier should be an object with the train(X,y) and
         classify(point) methods. The classifier should work on two
         classes labeled '0' and '1' and classify(point) should give a
-        positive score for class '1' and a negative score for class '0'."""
+        positive score for class '1' and a negative score for class '0'.
+        """
         # builds a 'triangle' of one v one classifiers
         #         j
         #      0 1 2 3 4

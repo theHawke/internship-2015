@@ -71,7 +71,7 @@ def haarbasis(n, scale = 0):
     tr = np.kron(pos, np.array([[1,-1],[1, -1]]))
     bl = np.kron(pos, np.array([[1,1],[-1, -1]]))
     br = np.kron(pos, np.array([[1,-1],[-1, 1]]))
-    return np.concatenate((hbp, tr, bl, br))/2
+    return np.r_[hbp, tr, bl, br]/2
 
 
 
@@ -93,8 +93,6 @@ def recover_block(block):
 
 print("reconstructing")
 #rec_im = np.array([recover_block(b) for b in blocks]).reshape(64,64,8,8).transpose(0,2,1,3).reshape(512,512)
-
-
 
 #plt.imshow(rec_im, cmap = cm.Greys_r)
 #plt.show()

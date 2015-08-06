@@ -50,7 +50,7 @@ def rvm(y, data_mask, Psi):
             if alpha.size == 0:
                 return mu, 0, relevant, alpha
 
-        elif np.sum(np.abs(alpha - alpha_old)) < delta_t or i > 100:
+        elif np.sum(np.abs(alpha - alpha_old)) < delta_t or i > 1000:
             return mu, 1/beta, relevant, alpha
 
         i += 1
