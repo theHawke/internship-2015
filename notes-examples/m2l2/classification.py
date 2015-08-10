@@ -182,6 +182,9 @@ class SVM:
             asq = abssq(diff)
         return np.exp(self._nitssq*asq)
 
+    def _biasDot(self, x1, x2):
+        return np.dot(x1, x2) + 1
+
     def __init__(self, kernel='linear', sigma=1, customK=None):
         if kernel == 'rbf':
             self._kernel = self._rbf
@@ -192,13 +195,10 @@ class SVM:
                     "A custom kernel function has to be provided when using \
                     the 'custom' option for the kernel.")
             self._kernel = customK
-        else:
-            self._kernel = np.dot
+        else: # if kernel == 'linear'
+            self._kernel = self._biasDot
 
     def train(self, X, y):
-        # add a bias component to each vector
-        X = np.column_stack((np.ones(y.size), X))
-
         # label classes as -1, 1 instead of 0, 1
         ci = y * 2 - 1
 
@@ -214,20 +214,23 @@ class SVM:
         def dLda(a):
             return ci * np.sum(np.reshape(a*ci,(-1,1))*kfX, axis=0) - 1
 
-        bs = [(0, 1)] * y.size # limit α to [0,1]
+        bs = [(0, None)] * y.size # limit α to [0,inf]
 
         # minimise the cost function L(α)
-        self.alpha,_,_ = fmin_tnc(L, np.ones(y.size)/2, fprime=dLda, bounds=bs, disp=0)
+        self.alpha,_,_ = fmin_tnc(L, np.ones(y.size), fprime=dLda, bounds=bs, disp=0)
 
         # only keep α, c_i and X for support vectors (α != 0)
         self._aci = (self.alpha*ci)[self.alpha != 0]
         self._SV = X[self.alpha != 0]
 
+    def _class(self, x):
+        return np.sum(self._aci*self._kernel(self._SV,x))
+
     def classify(self, x):
         if x.ndim > 1:
-            return np.array([self.classify(xi) for xi in x])
-        xh = np.concatenate((np.ones(1), x)) # add bias component
-        return np.sum(self._aci*self._kernel(self._SV,xh))
+            return np.apply_along_axis(self._class, 1, x)
+        else:
+            return self._class(x)
 
 
 class DecisionBranch:

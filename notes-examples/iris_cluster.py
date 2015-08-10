@@ -70,7 +70,9 @@ def update_plot(i):
     km.M_step()
     return scatter, means, ells
 
-an = ani.FuncAnimation(fig, update_plot, frames=100, blit=True,
-                       interval=500, repeat=False)
+an = ani.FuncAnimation(fig, update_plot, frames=100,
+                       interval=100, repeat=False)
 
-an.save("cluster_iris.mp4")
+#ffmpeg not installed on the MCS machines
+#an.save("cluster_iris.mp4", codec="x264")
+plt.show()

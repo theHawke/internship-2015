@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.datasets import load_iris
 from matplotlib.colors import ListedColormap
-from m2l2.classification import SVM, kNN, NaiveBayes, DA, OVA, OVO
+from m2l2.classification import kNN, NaiveBayes, SVM, DA, OVA, OVO
 
 ## Data generation
 data = load_iris()
@@ -34,13 +34,13 @@ plt.title('Fisher Iris Data')
 
 
 ## model, works with OVA, OVO, NaiveBayes, kNN
-multi_classy = kNN(k=1)
+multi_classy = OVO(3, DA())
 multi_classy.train(X, y)
 
 
 ## plot results
-xx, yy = np.meshgrid(np.linspace(x_min, x_max, 100),
-                     np.linspace(y_min, y_max, 100))
+xx, yy = np.meshgrid(np.linspace(x_min, x_max, 200),
+                     np.linspace(y_min, y_max, 200))
 Z = np.apply_along_axis(multi_classy.classify,
                         1, np.c_[xx.ravel(), yy.ravel()])
 
