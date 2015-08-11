@@ -19,13 +19,16 @@
 
 \section{Introduction}
 \subsection{About this library}
-"m$^2$l$^2$" is a small machine learning library I have written / am writing during my summer 2015 internship at the Cavendish Laboratory Lab for Scientific Computing (LSC). The purpose of the library is not to be much use for actual machine learning, instead it is mostly an educational tool for me (and maybe others). There exist mature machine learning libraries for many languages (e.g. \texttt{scikit-learn} for python) and I have neither the expertise nor the time to implement the algorithms in a complete (all the different options and statistical considerations) and efficient (well-optimised) manner.
+"m$^2$l$^2$" is a small machine learning library in Python I have written / am writing during my summer 2015 internship at the Cavendish Laboratory, Lab for Scientific Computing (LabSC). The primary purpose of the library is not to be much use for actual machine learning, instead it is mostly an educational tool for me and possibly others. There exist mature machine learning libraries for many languages (e.g. \texttt{scikit-learn} for python) and I have neither the expertise nor the time to implement the algorithms in a complete (all the different options and statistical considerations) and efficient (well-optimised) manner.
+
+\subsection{Algorithm sources}
+The algorithms as implemented are primarily based on lecture slide provided to me by my supervisor Dr. Anita Faul, with a few algorithms coming from \textit{Pattern Recognition and Machine Learning} (\cite{PRML}), which was also used for occasional clarification and a lot of statistical background.
 
 
 \section{Structure}
 The library is divided into several modules corresponding to different general areas in machine learning. This section will give an overview of how the algorithms in the different modules are used, while section 3 contains documentation for each individual algorithm.
 
-In general, for iterative algorithms, the class will contain a method called \texttt{getIterationData(i)} which will return the relevant data from the \texttt{i}th iteration. The return type varies with the algorithm, so this is not an interface where different algorithms can just be swapped out in general (there may be groups of algorithms with similar intermediate data).
+For some of the iterative algorithms, the class will contain a method called \texttt{getIterationData(i)} which will return the relevant data from the \texttt{i}th iteration. The return type varies with the algorithm, so this is not an interface where different algorithms can just be swapped out in general (there may be groups of algorithms with similar intermediate data).
 
 \subsection{\texttt{m2l2.classification}}
 The algorithms in this module deal with the task of classification, i.e. deciding what class $\mathcal{C}_k, k \in \{0 \ldots K-1\}$ a set of features (feature vector $\mathbf{x} = \{x_0, x_1, \ldots, x_n\}$) belongs to based on a set of training data $\{(\mathbf{x}_i, c_i)\}, c_i \in \{\mathcal{C}_k\}$.
@@ -52,6 +55,52 @@ class Classifier:
     # absolute value giving some measure of certainty.
     # For multi-class classifiers, the result is just
     # the number of the class.
+\end{lstlisting}
+
+\subsection{\texttt{m2l2.clustering}}
+Clustering is a form of unsupervised learning where the aim is to find groups of points that lie close together and separated from others in data-space. The probabilistic models on which the algorithms in this module are based are discrete latent-variable models
+\[ p(\mathbf{x}) = \sum_\mathbf{z} p(\mathbf{z}) p(\mathbf{x} | \mathbf{z}) \]
+where $\mathbf{z}$ is the discrete latent variable.
+
+The algorithms in this module are implemented as classes that allow some greater insight into the algorithms operation. Since most algorithms in this module use some variant of the iterative EM-algorithm, those classes provide a way to either single step through the iterations or to run the algorithm to convergence.
+
+\begin{lstlisting}[frame=TLbr,breaklines=true]
+class Clustering:
+  def __init__(self, X, parameters):
+    # `parameters' can be different things, usually
+    # any model parameters that have to be provided
+    # in advance, such as the number of clusters
+    # expected in the data
+  
+  def run(self, parameters):
+    # Run the algorithm to convergence, `parameters'
+    # can be convergence threshold values for different
+    # parameters (usually cost or likelihood function)
+  
+  def E_Step(self):
+  def M_Step(self):
+    # For algorithms based on EM, these functions
+    # perform a single step of the iteration
+    
+  def getCurrentParameters(self):
+    # returns the parameters of the model as currently
+    # determined by the algorithm. This includes the
+    # cluster assignments of the data-points and the
+    # parameters (mean etc.) of the clusters
+\end{lstlisting}
+
+\subsection{\texttt{m2l2.utils}}
+This module contains a few routines for data preprocessing and dimensionality reduction. The routines are implemented as simple functions that return the processed dataset.
+
+\begin{lstlisting}[frame=TLbr,breaklines=true]
+def process_data(X, options, return_parameters=False):
+  # `options' are things like number of desired
+  # dimensions for dimensionality reduction.
+  # `return_parameters' controls whether the function
+  # returns the parameters (like the data mean or the
+  # basis vector of the subspace) that were found and
+  # used to transform the data in addition to the
+  # transformed data.
 \end{lstlisting}
 
 
@@ -90,6 +139,18 @@ A different weak learner can also be specified with the \texttt{baseClassifier} 
 
 \subsubsection{One vs. All and One vs. One (as classes \texttt{OVA()} and \texttt{OVO()})}
 These two are a sort of meta-classifier, using any binary classifier to create a multi-class classifier. The number of classes and the base classifier are passed to the constructor in both cases. They differ in the approach and the total number of classifiers used. The One vs. All (also called One vs. Rest or One vs. Many) uses $K$ classifiers, where the One vs. One classifier uses $\frac{K(K-1)}{2} = O(K^2)$ classifiers.
+
+\subsection{\texttt{m2l2.clustering}}
+\subsubsection{K-Means (as class \texttt{kMeans})}
+
+\subsubsection{Gaussian Mixture Model (as class \texttt{GaussianMixtureEM}}
+
+\subsection{\texttt{m2l2.utils}}
+\subsubsection{Data normalisation (as function \texttt{normalise})}
+
+\subsubsection{Principle Component Analysis (as function \texttt{PCA})}
+
+\subsubsection{Linear Discriminant Analysis (as function \texttt{LDA})}
 
 \begin{thebibliography}{9}
 \bibitem{PRML} C.M. Bishop, \emph{Pattern Recognition and Machine Learning}, Springer, 2007
