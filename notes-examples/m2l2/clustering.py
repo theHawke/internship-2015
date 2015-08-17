@@ -33,6 +33,9 @@ class kMeans:
             if old_cost == cost:
                 break
 
+    def getCurrentParameters(self):
+        return self.cl, self.mu
+
 def GaussLikely(xy, mu, icov, dcov):
     """Inverse and determinant of the covariance matrix are
     passed seperately since they can be precomputed"""
@@ -97,3 +100,6 @@ class GaussianMixtureEM:
             ll = self.logLikelihood()
             if (ll - old_ll)/ll < threshold:
                 break
+
+    def getCurrentParameters(self):
+        return self.cl, self.mu, self.Sigma

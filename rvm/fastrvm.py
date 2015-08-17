@@ -1,31 +1,33 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-
 import numpy as np
 import scipy.sparse as sp
+from scipy.misc import lena, imshow
 
 def fastRVM(t, Phi):
 
     M, N = Phi.get_shape()
 
-    assert(N == t.size())
+    assert(N == t.size)
 
-    beta = 1
+    beta = 10/np.var(t)
+
+    PhiT = Phi.transpose()
 
     initphi = Phi[:,0]
-    initphinorm = initphi.transpose().dot(initphi)
+    initphinorm = initphi.transpose().dot(initphi).toarray()[0,0]
     initalpha = initphinorm / (
-        initphi.transpose().dot(t)**2 / initphinorm - beta)
+        initphi.transpose().dot(t)[0]**2 / initphinorm - beta)
 
-    initSigma = 1 / (initalpha + initphinorm)
-    initmu = beta * initSigma * initphi.transpose().dot(t)
+    initSigma = 1 / (initalpha + beta*initphinorm)
+    initmu = beta * initSigma * initphi.transpose().dot(t)[0]
 
     Cinv = sp.eye(N,N).tocsc()/beta
     Cinv[0,0] = 1/(beta + initalpha*initphinorm)
 
-    phiTC = initphi.transpose().dot(Cinv)
+    phiTC = PhiT.dot(Cinv)
 
-    S = phiTC.dot(initphi).diagonal()
+    S = phiTC.dot(Phi).diagonal()
     Q = phiTC.dot(t)
 
     Sigma = np.array([[initSigma]])
@@ -40,9 +42,11 @@ def fastRVM(t, Phi):
 
     L = 0
 
+    i = 0
+
     while True:
-        i = np.random.randint(M)
-        if np.nonzero(indices == i).size() == 0:
+        i = (i+1) % M
+        if np.nonzero(indices == i)[0].size == 0:
             # phi_i is not in the model at the moment ...
             if Q[i]**2 > S[i]:
                 # ... but we add it to the model
@@ -55,7 +59,7 @@ def fastRVM(t, Phi):
                 alpha_i = s**2/(q**2 - s)
                 alpha = np.append(alpha, alpha_i)
 
-                Sigma_ii = 1/(newalpha + s)
+                Sigma_ii = 1/(alpha_i + s)
 
                 mu_i = Sigma_ii * q
 
@@ -63,18 +67,21 @@ def fastRVM(t, Phi):
                 phi_i = Phi[:,i]
                 Phi_ = Phi[:,indices]
                 Phi_T = Phi_.transpose()
-                Phi_T_phi_i = Phi_T.dot(phi_i).todense()
+                Phi_T_phi_i = Phi_T.dot(phi_i).toarray()[:,0]
 
                 # common factor used in the other quantities: Sigma Phi^T phi_i
                 commF = np.dot(Sigma, Phi_T_phi_i)
 
                 # update all the S and Q values
-                e_m = beta * (Phi_T_phi_i - beta * Phi_T.dot(Phi_).dot(commF))
+                # PhiT includes all collumns, while Phi_T includes only the
+                # relevant ones
+                e_m = beta * (PhiT.dot(phi_i).toarray()[:,0]
+                              - beta*PhiT.dot(Phi_).dot(commF))
                 S = S - Sigma_ii * e_m**2
                 Q = Q - mu_i * e_m
 
                 # update mu
-                mu = np.r_[mu - mu_i * beta * commF, mui]
+                mu = np.r_[mu - mu_i * beta * commF, [mu_i]]
 
                 # update Sigma
                 Sigma = np.r_[
@@ -86,14 +93,14 @@ def fastRVM(t, Phi):
 
             else:
                 # ... and we don't have to do anything
-                continue
+                deltaL = 0
 
         else:
             # phi_i is already contained in the model ...
-            j = np.nonzero(indices == i)[0]
+            j = np.nonzero(indices == i)[0][0]
             assert(indices[j] == i)
-            s = alpha[ii]*S[i]/(alpha[ii] - S[i])
-            q = alpha[ii]*Q[i]/(alpha[ii] - S[i])
+            s = alpha[j]*S[i]/(alpha[j] - S[i])
+            q = alpha[j]*Q[i]/(alpha[j] - S[i])
 
             Sigma_j = Sigma[:,j]
             Sigma_jj = Sigma_j[j]
@@ -101,7 +108,7 @@ def fastRVM(t, Phi):
 
             Phi_ = Phi[:,indices]
 
-            commF = beta * Phi_.transpose().dot(Phi_).dot(Sigma_j)
+            commF = beta * PhiT.dot(Phi_).dot(Sigma_j)
 
             if q**2 > s:
                 # ... and we re-estimate its coefficients
@@ -123,7 +130,7 @@ def fastRVM(t, Phi):
 
 
             else:
-                # ... but we remove it from the modle
+                # ... but we remove it from the model
                 deltaL = 0.5 * (Q[i]**2/(S[i] - alpha[j]) - np.log(1 - S[i]/alpha[j]))
 
                 Sigma = Sigma - np.outer(Sigma_j, Sigma_j)/Sigma_jj
@@ -135,14 +142,32 @@ def fastRVM(t, Phi):
                 alpha = np.delete(alpha, j)
                 mu = np.delete(mu, j)
                 Sigma = np.delete(np.delete(Sigma, j, axis=0), j, axis=1)
+                indices = np.delete(indices, j)
 
-        L = L + deltaL
-        if deltaL/L < 1e-7:
-            # final check on all basis functions
-            #TODO
-            break
+        if np.isfinite(deltaL) and deltaL > 0:
+            L = L + deltaL
+            if deltaL/L < 1e-7:
+                # final check on all basis functions
+                inQ = Q[indices]
+                inS = S[indices]
+                inq = alpha*inQ/(alpha-inS)
+                ins = alpha*inS/(alpha-inS)
+                inCond = np.all(inq**2 > ins)
+
+                outq = np.delete(Q, indices)
+                outs = np.delete(S, indices)
+                outCond = np.all(outq**2 <= outs)
+
+                if inCond and outCond:
+                    break
 
     return indices, mu, alpha
+
+
+
+###################
+# Testing FastRVM #
+###################
 
 
 def _posmat(n):
@@ -169,3 +194,24 @@ def haarbasis_sparse(size, scale = 0):
     # only the linked list sparse format implements reshape()
     return sp.hstack([m.tolil().reshape((1,2**(2*size))).tocsr().transpose()
                       for m in a], 'csc')
+
+def uncompress(pos, val, n):
+    arr = np.zeros(n)
+    for i in range(pos.size):
+        arr[pos[i]] = val[i]
+    return arr
+
+
+basis = haarbasis_sparse(4)
+
+blocks = lena().reshape(32,16,32,16).transpose(0,2,1,3).reshape(1024,256)
+def recover_block(block):
+    ind, mu, a = fastRVM(block, basis)
+    weights = uncompress(ind, mu, 256)
+    print("block done")
+    return basis.dot(weights)
+
+print("reconstructing")
+rec_im = np.array([recover_block(b) for b in blocks]).reshape(32,32,16,16).transpose(0,2,1,3).reshape(512,512)
+
+imshow(np.array(rec_im.round(), dtype=np.uint8))
