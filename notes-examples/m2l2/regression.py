@@ -2,6 +2,7 @@
 import numpy as np
 from scipy.linalg import inv, solve, qr, solve_triangular, svd
 from scipy.sparse.linalg import lsqr
+from scipy.optimize import minimize
 
 class OLS:
     def __init__(self, method='svd'):
@@ -82,26 +83,53 @@ class RidgeRegression:
         return np.dot(self.w, x.T)
 
 
+class Lasso:
+    def __init__(self, alpha):
+        self.alpha=alpha
+
+    def fit(self, X, y):
+        # L1 (Lasso) regularisation doesn't have a nice closed form like L2
+        # does, so we have to minimise |y - Xw|^2 + α|w|
+        # we do this by reverting to an iterative algorithm
+        N, M = X.shape
+
+        def f(w):
+            diff = y - np.dot(X, w)
+            return np.sum(diff**2) + self.alpha*np.sum(w)
+
+        def df(w):
+            return self.alpha*np.sign(w) - 2*np.dot(X.T, y - np.dot(X, w))
+
+        def ddf(w):
+            return -2*np.dot(X.T, X) + np.diag(self.alpha*(w == 0)*100000000)
+
+        res = minimize(f, np.zeros(M), method='Newton-CG', jac=df, hess=ddf)
+        self.w = res.x
+
+    def predict(self, x):
+        return np.dot(self.w, x.T)
+
+
 def polynomial(x, degree=3):
     """generate a design matrix X for polynomial regression"""
     return np.column_stack([x**n for n in range(degree+1)])
 
-def gaussian(x, num=10, low=-1, high=1, scale=None):
+def gaussian(x, low=-1, high=1, num=10, scale=None):
     """generate a design matrix X from gaussians"""
-    if scale == None:
+    if scale is None:
         # this setting ensures a decent amount of overlap between
         # gaussians while still being distinct
-        s = (high-low)/num
+        s = (high-low)/float(num)
     else:
         s = scale
     return np.column_stack([np.exp(-(x-mu)**2/(2*s**2))
                  for mu in np.linspace(low, high, num)])
 
-def sigmoidal(x, num=10, low=-1, high=1, scale=None):
+def sigmoidal(x, low=-1, high=1, num=10, scale=None):
     """generate a design matrix from sigmoids"""
-    if scale == None:
-        s = (high-low)/num
+    if scale is None:
+        s = (high-low)/float(num)
     else:
         s = scale
-    return np.column_stack([1/(1 + exp(-(x-mu)/s))
+    return np.column_stack([1/(1 + np.exp(-(x-mu)/s))
                  for mu in np.linspace(low, high, num)])
