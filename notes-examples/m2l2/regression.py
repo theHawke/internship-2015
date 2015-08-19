@@ -118,7 +118,7 @@ class PLS:
         return np.dot(x, self.w)
 
 
-class ARD:
+class Bayesian:
     def fit(self, X, y):
         # preliminary calculations
         N, M = X.shape

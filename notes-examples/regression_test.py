@@ -4,7 +4,7 @@ import numpy as np
 from scipy.stats import uniform, norm
 import matplotlib.pyplot as plt
 from m2l2.regression import polynomial, gaussian, sigmoidal
-from m2l2.regression import OLS, RidgeRegression, Lasso, ARD, PLS
+from m2l2.regression import OLS, RidgeRegression, Lasso, Bayesian, PLS
 from m2l2.RVM import RVM
 
 # Generate fit data: sin wave with noise
@@ -42,7 +42,7 @@ reg.fit(X, y)
 XX = gaussian(xx, low=0, high=1, num=5)
 #XX = sigmoidal(xx, low=0, high=1, num=5)
 
-# for ARD only: plot the standard deviation of the predictive distribution
+# for Bayesian only: plot the standard deviation of the predictive distribution
 #yy, vv = reg.predict(XX, return_variance=True)
 #sd = np.sqrt(vv)
 #ax.fill_between(xx, yy-sd, yy+sd, color='r', alpha=0.3)
