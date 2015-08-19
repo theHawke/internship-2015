@@ -5,6 +5,7 @@ from scipy.stats import uniform, norm
 import matplotlib.pyplot as plt
 from m2l2.regression import polynomial, gaussian, sigmoidal
 from m2l2.regression import OLS, RidgeRegression, Lasso, ARD, PLS
+from m2l2.RVM import RVM
 
 # Generate fit data: sin wave with noise
 N = 20

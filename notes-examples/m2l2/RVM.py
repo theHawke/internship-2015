@@ -4,9 +4,10 @@ import scipy.sparse as sp
 from scipy.misc import lena, imshow
 
 class RVM:
-    def fit(Phi, t):
+    def fit(self, Phi, t):
+        Phi = sp.csc_matrix(Phi)
 
-        M, N = Phi.get_shape()
+        N, M = Phi.get_shape()
 
         assert(N == t.size)
 
@@ -42,11 +43,12 @@ class RVM:
 
         L = 0
 
-        i = 0
+        it = 0
 
         while True:
-            i = (i+1) % M
-            if np.nonzero(indices == i)[0].size == 0:
+            it = it+1
+            i = it % M
+            if np.count_nonzero(indices == i) == 0:
                 # phi_i is not in the model at the moment ...
                 if Q[i]**2 > S[i]:
                     # ... but we add it to the model
@@ -167,7 +169,7 @@ class RVM:
         self.M = M
         return indices, mu, alpha
 
-    def predict(Phi_x_j):
+    def predict(self, Phi_x_j):
         w = uncompress(self.ind, self.mu, self.M)
         return Phi_x_j.dot(w)
 
