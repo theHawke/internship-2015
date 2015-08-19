@@ -3,7 +3,8 @@
 import numpy as np
 from scipy.stats import uniform, norm
 import matplotlib.pyplot as plt
-from m2l2.regression import polynomial, gaussian, sigmoidal, OLS, RidgeRegression, Lasso, ARD
+from m2l2.regression import polynomial, gaussian, sigmoidal
+from m2l2.regression import OLS, RidgeRegression, Lasso, ARD, PLS
 
 # Generate fit data: sin wave with noise
 N = 20
@@ -26,19 +27,24 @@ plt.title('Regression Testing')
 
 # Model
 
-X = gaussian(x, low=0, high=1, num=10)
+#X = polynomial(x, degree=5)
+X = gaussian(x, low=0, high=1, num=5)
+#X = sigmoidal(x, low=0, high=1, num=5)
 
-reg = ARD()
+reg = PLS()
 reg.fit(X, y)
 
 
 # plot results
-XX = gaussian(xx, low=0, high=1, num=10)
+
+#XX = polynomial(xx, degree=5)
+XX = gaussian(xx, low=0, high=1, num=5)
+#XX = sigmoidal(xx, low=0, high=1, num=5)
 
 # for ARD only: plot the standard deviation of the predictive distribution
-yy, vv = reg.predict(XX, return_variance=True)
-sd = np.sqrt(vv)
-ax.fill_between(xx, yy-sd, yy+sd, color='r', alpha=0.3)
+#yy, vv = reg.predict(XX, return_variance=True)
+#sd = np.sqrt(vv)
+#ax.fill_between(xx, yy-sd, yy+sd, color='r', alpha=0.3)
 
 # plot the predicted curve
 ax.plot(xx, reg.predict(XX), 'r-', label='model')

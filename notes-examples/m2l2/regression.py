@@ -183,6 +183,50 @@ class ARD:
             return res
 
 
+class PLS:
+    def fit(self, X, y, l = None):
+        N, M = X.shape
+
+        if l is None:
+            l = M
+
+        # preallocate arrays
+        w = np.empty((M,M))
+        t = np.empty((N,M))
+        p = np.empty((M,M))
+        q = np.empty(M)
+
+        w0 = np.dot(X.T, y)
+        w[:,0] = w0/np.linalg.norm(w0)
+        t[:,0] = np.dot(X, w[:,0])
+
+        for k in range(l):
+            t_k = np.dot(t[:,k], t[:,k])
+            t[:,k] = t[:,k]/t_k
+            p[:,k] = np.dot(X.T, t[:,k])
+            q[k] = np.dot(y, t[:,k])
+            if q[k] == 0:
+                # go until rank(X) is 0, i.e. all its entries are zero
+                l = k
+                break
+            if k < l-1:
+                X = X - t_k * np.outer(t[:,k], p[:,k])
+                w[:,k+1] = np.dot(X.T, y)
+                t[:,k+1] = np.dot(X, w[:,k+1])
+
+        # shrink the arrays
+        if l < M:
+            w = w.resize((M,l))
+            t = t.resize((N,l))
+            p = p.resize((M,l))
+            q = q.resize(l)
+
+        self.B = np.dot(w, np.dot(np.linalg.inv(np.dot(p.T, w)), q))
+        self.B_0 = q[0] - np.dot(p[:,0], self.B)
+
+    def predict(self, x):
+        return np.dot(x, self.B) + self.B_0
+
 
 def polynomial(x, degree=3):
     """generate a design matrix X for polynomial regression"""
