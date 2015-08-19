@@ -40,7 +40,7 @@ class OLS:
 
 
     def predict(self, x):
-        return np.dot(self.w, x.T)
+        return np.dot(x, self.w)
 
 class RidgeRegression:
     def __init__(self, alpha, method='svd'):
@@ -80,7 +80,7 @@ class RidgeRegression:
             error("Method not implemented")
 
     def predict(self, x):
-        return np.dot(self.w, x.T)
+        return np.dot(x, self.w)
 
 
 class Lasso:
@@ -107,7 +107,81 @@ class Lasso:
         self.w = res.x
 
     def predict(self, x):
-        return np.dot(self.w, x.T)
+        return np.dot(x, self.w)
+
+
+class PLS:
+    def fit(self, X, y):
+        return
+
+    def predict(self, x):
+        return np.dot(x, self.w)
+
+
+class ARD:
+    def fit(self, X, y):
+        # preliminary calculations
+        N, M = X.shape
+
+        assert(M <= N) #TODO: make sure it works for M > N
+
+        # SVD, X = U.Σ.V^T, s = diag(Σ)
+        _, s, VT = svd(X, full_matrices=False)
+
+        # X^T.y
+        XT_y = np.dot(X.T, y)
+
+        # eigenvalues of X^T.X, λ' = λ/β
+        lambdap = s**2
+
+        # initial values
+        alpha = 1
+        beta = 1
+
+        # count iterations
+        i = 0
+
+        while True:
+            i = i + 1
+            # unfortunatley, lambda is a reserved keyword no utf-8 variables
+            lambda_i = beta*lambdap
+            # inverse of the diagonal matrix:
+            # (I + α/β Σ^-2)^-1 = diag(1/(1 + α/λ))
+            invpart = np.diag(1 / (1 + alpha / lambda_i))
+            m_N = beta/alpha * np.dot(np.eye(M) -
+                                      np.dot(VT.T, np.dot(invpart, VT)), XT_y)
+            gamma = np.sum(lambda_i/(alpha + lambda_i))
+
+            # new values for α, β
+            alpha_old = alpha
+            beta_old = beta
+            alpha = gamma/np.dot(m_N, m_N)
+            diff = y - np.dot(X, m_N)
+            beta = (N-gamma)/np.sum(diff**2)
+
+            if (np.abs(beta-beta_old)/beta_old < 1e-6 and
+                np.abs(alpha-alpha_old)/alpha_old < 1e-6):
+                break
+
+        self.it = i
+
+        self.alpha = alpha
+        self.beta = beta
+        self.gamma = gamma
+
+        lambda_i = beta*lambdap
+        invpart = np.diag(1 / (1 + alpha / lambda_i))
+        self.S_N = 1/alpha * (np.eye(M) - np.dot(VT.T, np.dot(invpart, VT)))
+        self.m_N = beta * np.dot(self.S_N, XT_y)
+
+    def predict(self, x, return_variance=False):
+        res = np.dot(x, self.m_N)
+        if return_variance:
+            var = 1/self.beta + np.einsum('ij,ik,jk->i', x, x, self.S_N)
+            return res, var
+        else:
+            return res
+
 
 
 def polynomial(x, degree=3):
