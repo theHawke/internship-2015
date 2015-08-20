@@ -32,8 +32,10 @@ plt.title('Regression Testing')
 X = gaussian(x, low=0, high=1, num=5)
 #X = sigmoidal(x, low=0, high=1, num=5)
 
-reg = PLS()
-reg.fit(X, y)
+np.seterr(invalid='raise')
+
+reg = RVM()
+reg.fit(X, y, beta=100)
 
 
 # plot results

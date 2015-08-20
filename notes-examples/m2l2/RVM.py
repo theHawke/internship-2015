@@ -4,32 +4,42 @@ import scipy.sparse as sp
 from scipy.misc import lena, imshow
 
 class RVM:
-    def fit(self, Phi, t):
+    def fit(self, Phi, t, beta=None):
+        # Φ is the design matrix, in sparse matrix format
         Phi = sp.csc_matrix(Phi)
 
         N, M = Phi.get_shape()
 
-        assert(N == t.size)
+        if N != t.size:
+            raise ValueError("Dimensions of input arguments incompatile")
 
-        beta = 10/np.var(t)
+        if beta is None:
+            beta = 10/np.var(t)
 
+        # Φ doesn't change and we need this several times
         PhiT = Phi.transpose()
 
+        # for the initial basis vector, we choose the first column of Φ
         initphi = Phi[:,0]
+        # initphinorm = φ₀^T.φ₀, initphi_t = φ₀^T.t
         initphinorm = initphi.transpose().dot(initphi).toarray()[0,0]
-        initalpha = initphinorm / (
-            initphi.transpose().dot(t)[0]**2 / initphinorm - beta)
+        initphi_t = initphi.transpose().dot(t)[0]
+        # α₀ = |φ₀|²/(|φ₀^T.|²/|φ₀|² - 1/β)
+        initalpha = initphinorm / (initphi_t**2 / initphinorm - 1/beta)
 
+        # Σ₀ and μ₀
         initSigma = 1 / (initalpha + beta*initphinorm)
-        initmu = beta * initSigma * initphi.transpose().dot(t)[0]
+        initmu = beta * initSigma * initphi_t
 
-        Cinv = sp.eye(N,N).tocsc()/beta
-        Cinv[0,0] = 1/(beta + initalpha*initphinorm)
+        Cinv = sp.eye(N,N).tocsc()*beta
+        Cinv[0,0] = 1/(1/beta + initphinorm/initalpha)
 
         phiTC = PhiT.dot(Cinv)
 
         S = phiTC.dot(Phi).diagonal()
+        S[0] = beta*initphinorm
         Q = phiTC.dot(t)
+        Q[0] = beta*initphi_t
 
         Sigma = np.array([[initSigma]])
         mu = np.array([initmu])
@@ -37,8 +47,8 @@ class RVM:
         alpha = np.array([initalpha])
 
         # tha array 'indices' keeps track of where the values correspondig to
-        # different basis functions are located in the arrays alpha, mu and Sigma
-        # and is used to get the correct collumns from Phi
+        # different basis functions are located in the arrays alpha, mu and
+        # Sigma and is used to get the correct collumns from Phi
         indices = np.array([0])
 
         L = 0
@@ -52,18 +62,16 @@ class RVM:
                 # phi_i is not in the model at the moment ...
                 if Q[i]**2 > S[i]:
                     # ... but we add it to the model
-                    s = S[i]
-                    q = Q[i]
 
-                    deltaL = 0.5 * ((q**2 - s)/s + np.log(s/q**2))
+                    deltaL = 0.5 * (Q[i]**2/S[i] - 1 - np.log(Q[i]**2/S[i]))
 
                     # update alphas with new value
-                    alpha_i = s**2/(q**2 - s)
+                    alpha_i = S[i]**2/(Q[i]**2 - S[i])
                     alpha = np.append(alpha, alpha_i)
 
-                    Sigma_ii = 1/(alpha_i + s)
+                    Sigma_ii = 1/(alpha_i + S[i])
 
-                    mu_i = Sigma_ii * q
+                    mu_i = Sigma_ii * Q[i]
 
                     # quantities used multiple times later
                     phi_i = Phi[:,i]
@@ -71,25 +79,25 @@ class RVM:
                     Phi_T = Phi_.transpose()
                     Phi_T_phi_i = Phi_T.dot(phi_i).toarray()[:,0]
 
-                    # common factor used in the other quantities: Sigma Phi^T phi_i
-                    commF = np.dot(Sigma, Phi_T_phi_i)
+                    # common factor used in the other quantities: Σ Φ^T φ_i
+                    cf = np.dot(Sigma, Phi_T_phi_i)
 
                     # update all the S and Q values
-                    # PhiT includes all collumns, while Phi_T includes only the
+                    # Phi includes all collumns, while Phi_ includes only the
                     # relevant ones
                     e_m = beta * (PhiT.dot(phi_i).toarray()[:,0]
-                                  - beta*PhiT.dot(Phi_).dot(commF))
+                                  - beta*PhiT.dot(Phi_).dot(cf))
                     S = S - Sigma_ii * e_m**2
                     Q = Q - mu_i * e_m
 
                     # update mu
-                    mu = np.r_[mu - mu_i * beta * commF, [mu_i]]
+                    mu = np.r_[mu - mu_i * beta * cf, [mu_i]]
 
                     # update Sigma
                     Sigma = np.r_[
-                        np.c_[Sigma + beta**2 * Sigma_ii * np.outer(commF, commF),
-                              - beta**2 * Sigma_ii * commF],
-                        np.c_[[- beta**2 * Sigma_ii * commF], Sigma_ii]]
+                        np.c_[Sigma + beta**2 * Sigma_ii * np.outer(cf, cf),
+                              - beta**2 * Sigma_ii * cf],
+                        np.c_[[- beta**2 * Sigma_ii * cf], Sigma_ii]]
 
                     indices = np.append(indices, i)
 
@@ -110,41 +118,48 @@ class RVM:
 
                 Phi_ = Phi[:,indices]
 
-                commF = beta * PhiT.dot(Phi_).dot(Sigma_j)
+                cf = beta * PhiT.dot(Phi_).dot(Sigma_j)
 
                 if q**2 > s:
                     # ... and we re-estimate its coefficients
-                    oldalpha = alpha[j]
+
+                    deltaL = 0.5 * (Q[i]**2/S[i] - 1 + np.log(S[i]/Q[i]**2))
+
+                    old_a = alpha[j]
                     alpha_i = s**2/(q**2 - s)
                     alpha[j] = alpha_i
 
-                    deltaL = 0.5 * (Q[i]**2/(S[i] + 1/(1/alpha_i - 1/oldalpha)) -
-                                    np.log(1 + S[i] * (1/alpha_i - 1/oldalpha)))
-
-                    k_j = 1/(Sigma_jj + 1/(alpha_i - oldalpha))
+                    k_j = 1/(Sigma_jj + 1/(alpha_i - old_a))
 
                     Sigma = Sigma - k_j * np.outer(Sigma_j, Sigma_j)
 
                     mu = mu - k_j * mu_j * Sigma_j
 
-                    S = S + k_j * commF**2
-                    Q = Q + k_j * mu_j * commF
+                    S = S + k_j * cf**2
+                    Q = Q + k_j * mu_j * cf
 
 
                 else:
                     # ... but we remove it from the model
-                    deltaL = 0.5 * (Q[i]**2/(S[i] - alpha[j]) - np.log(1 - S[i]/alpha[j]))
+                    deltaL = 0.5 * (Q[i]**2/(S[i] - alpha[j]) -
+                                    np.log(1 - S[i]/alpha[j]))
 
                     Sigma = Sigma - np.outer(Sigma_j, Sigma_j)/Sigma_jj
                     mu = mu - mu_j*Sigma_j/Sigma_jj
 
-                    S = S + commF**2/Sigma_jj
-                    Q = Q + mu_j*commF/Sigma_jj
+                    S = S + cf**2/Sigma_jj
+                    Q = Q + mu_j*cf/Sigma_jj
 
                     alpha = np.delete(alpha, j)
                     mu = np.delete(mu, j)
                     Sigma = np.delete(np.delete(Sigma, j, axis=0), j, axis=1)
                     indices = np.delete(indices, j)
+
+            if indices.size == 0:
+                raise Exception("removed last basis function from model")
+
+            if deltaL < 0:
+                raise Exception("negative deltaL")
 
             if np.isfinite(deltaL) and deltaL > 0:
                 L = L + deltaL
@@ -167,6 +182,11 @@ class RVM:
         self.ind = indices
         self.alpha = alpha
         self.M = M
+
+        print(indices)
+        print(mu)
+        print(alpha)
+
         return indices, mu, alpha
 
     def predict(self, Phi_x_j):
