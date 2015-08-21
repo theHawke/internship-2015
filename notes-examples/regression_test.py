@@ -3,7 +3,7 @@
 import numpy as np
 from scipy.stats import uniform, norm
 import matplotlib.pyplot as plt
-from m2l2.regression import polynomial, gaussian, sigmoidal
+from m2l2.regression import Polynomial, Gaussian, Sigmoidal
 from m2l2.regression import OLS, RidgeRegression, Lasso, Bayesian, PLS
 from m2l2.RVM import RVM
 
@@ -27,29 +27,18 @@ plt.title('Regression Testing')
 
 
 # Model
-
-#X = polynomial(x, degree=5)
-X = gaussian(x, low=0, high=1, num=5)
-#X = sigmoidal(x, low=0, high=1, num=5)
-
-np.seterr(invalid='raise')
-
-reg = RVM()
-reg.fit(X, y)
+reg = RVM(Gaussian(low=0, high=1, num=10, scale=0.3))
+reg.fit(x, y)
 
 
 # plot results
 
-#XX = polynomial(xx, degree=5)
-XX = gaussian(xx, low=0, high=1, num=5)
-#XX = sigmoidal(xx, low=0, high=1, num=5)
-
-# for Bayesian only: plot the standard deviation of the predictive distribution
-#yy, vv = reg.predict(XX, return_variance=True)
-#sd = np.sqrt(vv)
-#ax.fill_between(xx, yy-sd, yy+sd, color='r', alpha=0.3)
+# for Bayesian models only: plot the standard deviation of the predictive distribution
+yy, vv = reg.predict(xx, return_variance=True)
+sd = np.sqrt(vv)
+ax.fill_between(xx, yy-sd, yy+sd, color='r', alpha=0.3)
 
 # plot the predicted curve
-ax.plot(xx, reg.predict(XX), 'r-', label='model')
+ax.plot(xx, reg.predict(xx), 'r-', label='model')
 
 plt.show()

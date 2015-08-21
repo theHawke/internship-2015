@@ -4,11 +4,38 @@ from scipy.linalg import inv, solve, qr, solve_triangular, svd
 from scipy.sparse.linalg import lsqr
 from scipy.optimize import minimize
 
-class OLS:
-    def __init__(self, method='svd'):
-        self._m = method
+
+class LinearModel:
+    def __init__(self, basis, **kwargs):
+        self._basis = basis
+        self._init(**kwargs)
+
+    def _init(self):
+        pass
 
     def fit(self, X, y):
+        # generate the design matrix
+        Xp = self._basis.generate(X)
+        self._fit(Xp, y)
+
+    def _fit(self, X, y):
+        self.w = np.zeros(X.shape[1])
+
+    def predict(self, x, **kwargs):
+        # generate the predictor matrix
+        xp = self._basis.generate(x)
+        return self._predict(xp, **kwargs)
+
+    def _predict(self, x):
+        # default implementation
+        # fit() must have defined self.w
+        return np.dot(x, self.w)
+
+class OLS(LinearModel):
+    def _init(self, method='svd'):
+        self._m = method
+
+    def _fit(self, X, y):
         # We need to solve (X^T.X)w == X^T y for w.
         # This can be done with various methods:
         if self._m == 'svd':
@@ -39,15 +66,12 @@ class OLS:
             error("Method not implemented")
 
 
-    def predict(self, x):
-        return np.dot(x, self.w)
-
-class RidgeRegression:
-    def __init__(self, alpha, method='svd'):
+class RidgeRegression(LinearModel):
+    def _init(self, alpha, method='svd'):
         self._m = method
         self.alpha = alpha
 
-    def fit(self, X, y):
+    def _fit(self, X, y):
         # For regularisation, we need to solve the equation
         # (X^T.X + alpha*I) w == X^T y for w
         N, M = X.shape
@@ -79,15 +103,12 @@ class RidgeRegression:
         else:
             error("Method not implemented")
 
-    def predict(self, x):
-        return np.dot(x, self.w)
 
-
-class Lasso:
-    def __init__(self, alpha):
+class Lasso(LinearModel):
+    def _init(self, alpha):
         self.alpha=alpha
 
-    def fit(self, X, y):
+    def _fit(self, X, y):
         # L1 (Lasso) regularisation doesn't have a nice closed form like L2
         # does, so we have to minimise |y - Xw|^2 + α|w|
         # we do this by reverting to an iterative algorithm
@@ -106,20 +127,9 @@ class Lasso:
         res = minimize(f, np.zeros(M), method='Newton-CG', jac=df, hess=ddf)
         self.w = res.x
 
-    def predict(self, x):
-        return np.dot(x, self.w)
 
-
-class PLS:
-    def fit(self, X, y):
-        return
-
-    def predict(self, x):
-        return np.dot(x, self.w)
-
-
-class Bayesian:
-    def fit(self, X, y):
+class Bayesian(LinearModel):
+    def _fit(self, X, y):
         # preliminary calculations
         N, M = X.shape
 
@@ -174,7 +184,7 @@ class Bayesian:
         self.S_N = 1/alpha * (np.eye(M) - np.dot(VT.T, np.dot(invpart, VT)))
         self.m_N = beta * np.dot(self.S_N, XT_y)
 
-    def predict(self, x, return_variance=False):
+    def _predict(self, x, return_variance=False):
         res = np.dot(x, self.m_N)
         if return_variance:
             var = 1/self.beta + np.einsum('ij,ik,jk->i', x, x, self.S_N)
@@ -183,8 +193,8 @@ class Bayesian:
             return res
 
 
-class PLS:
-    def fit(self, X, y, l = None):
+class PLS(LinearModel):
+    def _fit(self, X, y, l = None):
         N, M = X.shape
 
         if l is None:
@@ -224,30 +234,58 @@ class PLS:
         self.B = np.dot(w, np.dot(np.linalg.inv(np.dot(p.T, w)), q))
         self.B_0 = q[0] - np.dot(p[:,0], self.B)
 
-    def predict(self, x):
+    def _predict(self, x):
         return np.dot(x, self.B) + self.B_0
 
 
-def polynomial(x, degree=3):
-    """generate a design matrix X for polynomial regression"""
-    return np.column_stack([x**n for n in range(degree+1)])
+#
+# Basis generators to be used with the LinearModels
+#
+class Polynomial:
+    def __init__(self, degree=5):
+        """generate a design matrix X for polynomial regression"""
+        self.d = degree
 
-def gaussian(x, low=-1, high=1, num=10, scale=None):
-    """generate a design matrix X from gaussians"""
-    if scale is None:
-        # this setting ensures a decent amount of overlap between
-        # gaussians while still being distinct
-        s = (high-low)/float(num)
-    else:
-        s = scale
-    return np.column_stack([np.exp(-(x-mu)**2/(2*s**2))
-                 for mu in np.linspace(low, high, num)])
+    def generate(self, x):
+        return np.column_stack([x**n for n in range(self.d+1)])
 
-def sigmoidal(x, low=-1, high=1, num=10, scale=None):
-    """generate a design matrix from sigmoids"""
-    if scale is None:
-        s = (high-low)/float(num)
-    else:
-        s = scale
-    return np.column_stack([1/(1 + np.exp(-(x-mu)/s))
-                 for mu in np.linspace(low, high, num)])
+
+class Gaussian:
+    def __init__(self, low=-1, high=1, num=10, scale=None):
+        """generate a design matrix X from gaussians"""
+        self.l = low
+        self.h = high
+        self.n = num
+        if scale is None:
+            # this setting ensures a decent amount of overlap between
+            # gaussians while still being distinct
+            self.s = (high-low)/float(num)
+        else:
+            self.s = scale
+
+    def generate(self, x):
+        return np.column_stack([np.exp(-(x-mu)**2/(2*self.s**2))
+                                for mu in np.linspace(self.l, self.h, self.n)])
+
+
+class Sigmoidal:
+    def __init__(self, low=-1, high=1, num=10, scale=None):
+        """generate a design matrix X from gaussians"""
+        self.l = low
+        self.h = high
+        self.n = num
+        if scale is None:
+            # this setting ensures a decent amount of overlap between
+            # sigmoids while still being distinct
+            self.s = (high-low)/float(num)
+        else:
+            self.s = scale
+
+    def generate(self, x):
+        """generate a design matrix from sigmoids"""
+        if scale is None:
+            s = (high-low)/float(num)
+        else:
+            s = scale
+            return np.column_stack([1/(1 + np.exp(-(x-mu)/self.s))
+                                    for mu in np.linspace(self.l, self.h, self.n)])
