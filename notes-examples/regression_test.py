@@ -13,12 +13,12 @@ noise = 0.1
 x = uniform.rvs(size=N)
 eps = norm.rvs(scale=noise, size=N)
 
-y = np.sin(2*np.pi*(x+1/12.0)) + eps
+y = np.sin(2*np.pi*x) + eps
 
 # plot original and data points
 xx = np.linspace(0, 1)
 ax = plt.axes()
-ax.plot(xx, np.sin(2*np.pi*(xx+1/12.0)), 'k--', label='source')
+ax.plot(xx, np.sin(2*np.pi*xx), 'k--', label='source')
 ax.plot(x, y, 'b+', label='data', ms=10, mew=1.2)
 ax.set_ylim(-1.5, 1.5)
 plt.xlabel('x')
@@ -35,7 +35,7 @@ X = gaussian(x, low=0, high=1, num=5)
 np.seterr(invalid='raise')
 
 reg = RVM()
-reg.fit(X, y, beta=100)
+reg.fit(X, y)
 
 
 # plot results
