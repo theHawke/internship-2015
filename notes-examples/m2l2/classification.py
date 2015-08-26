@@ -5,45 +5,40 @@ from heapq import heapify, heappop
 from scipy.optimize import fmin_tnc, fmin_slsqp
 from scipy.spatial import KDTree
 
-def GaussLikely(xy, mu, icov, dcov):
+def GaussLikely(xy, mu, var):
     """Inverse and determinant of the covariance matrix are
     passed seperately since they can be precomputed
     """
     offs = xy - mu
-    arg = - np.dot(offs, np.dot(icov, offs)) / 2
-    return np.exp(arg) / np.sqrt(2*np.pi*dcov)
+    arg = - np.sum(offs**2/var) / 2
+    return np.exp(arg) / np.sqrt(2*np.pi*np.product(var))
 
 class NaiveBayes:
-    """A Gaussian Naive Bayes classifier,
-    can do k-class classification
-    """
-
-    def __init__(self, K=2):
-        self._K = K # number of classes
-
     def train(self, X, y):
+        # determine the number of classes
+        self._cl = np.unique(y)
+        self._K = self._cl.size
+
         # separate into the different classes
-        data = [X[y == i] for i in range(self._K)]
+        data = [X[y == i] for i in self._cl]
 
         # calculate mean
         self._mu = [np.mean(Xp, axis = 0) for Xp in data]
 
-        # calculate covariance matrix (store its inverse and determinat)
-        cov = [np.cov(Xp, rowvar=0) for Xp in data]
-        self._dcov = map(np.linalg.det, cov)
-        self._icov = map(np.linalg.inv, cov)
+        # calculate variances
+        self._var = [np.var(Xp, axis=0) for Xp in data]
 
         # calculate prior class probabilities
         tot = float(len(X))
         self._prior = [float(len(Xp))/tot for Xp in data]
 
     def classify(self, x):
-        scores = [pp*GaussLikely(x, mu, icov, dcov) for (mu, icov, dcov, pp)
-                  in zip(self._mu, self._icov, self._dcov, self._prior)]
+        scores = [pp*GaussLikely(x, mu, var) for (mu, var, pp)
+                  in zip(self._mu, self._var, self._prior)]
         if self._K == 2:
             return np.log(scores[1]/scores[0])
         else:
-            return np.argmax(scores)
+            return self._cl[np.argmax(scores)]
 
 
 class DA:

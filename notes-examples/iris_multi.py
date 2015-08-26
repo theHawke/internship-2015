@@ -34,7 +34,7 @@ plt.title('Fisher Iris Data')
 
 
 ## model, works with OVA, OVO, NaiveBayes, kNN
-multi_classy = OVO(3, DA())
+multi_classy = NaiveBayes()
 multi_classy.train(X, y)
 
 

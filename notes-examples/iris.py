@@ -35,7 +35,7 @@ plt.title('Fisher Iris Data')
 
 
 ## model
-classy = SVM(kernel='rbf')
+classy = NaiveBayes()
 classy.train(X, y)
 
 
@@ -48,8 +48,9 @@ Z = np.apply_along_axis(classy.classify,
 # Put the result into a color plot
 Z = Z.reshape(xx.shape)
 ax.contourf(xx, yy, Z, cmap=cm, alpha=.4)
+ax.contour(xx, yy, Z, [0], colors='k', alpha=.8)
 
 # only for SVM: indicate support vectors
-ax.scatter(classy._SV[:,0], classy._SV[:,1], 30, 'black', 'x', alpha=0.7)
+#ax.scatter(classy._SV[:,0], classy._SV[:,1], 30, 'k', 'x', alpha=.7)
 
 plt.show()

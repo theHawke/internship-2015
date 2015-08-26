@@ -1,4 +1,4 @@
-\documentclass[a4paper, 12pt]{article}
+\documentclass[a4paper]{article}
 
 \usepackage{amsmath}
 \usepackage{amsfonts}
@@ -9,23 +9,98 @@
 
 \lstset{language=python}
 
-
-\title{m$^2$l$^2$: My Machine Learning Library}
-\author{Hauke Neitzel}
+\title{A Survey of Machine Learning Methods and Example Implementations thereof}
+\author{Hauke Neitzel (hn276)}
+\date{Long Vacation Project 2015}
 
 \begin{document}
 \maketitle
-\newpage
+
+\abstract{
+Machine learning is an immensely popular field at the moment, with a lot of interest in it coming from real world applications like data mining. However, machine learning has also found applications in Physics where it is used primarily in situations where there is so much data that it would be infeasible for humans to look at it.
+
+With this in mind, the aim of this project was to gain a thorough familiarity with many of the machine learning algorithms commonly in use today, with the supplementary goal of producing a library of example implementations of those algorithms. In this report I present the algorithms included in the library and include general documentation of the library's structure. The library is written in python, a popular language for scientific computing, utilising the numpy and scipy libraries.
+}
 
 \section{Introduction}
-\subsection{About this library}
-"m$^2$l$^2$" is a small machine learning library in Python I have written / am writing during my summer 2015 internship at the Cavendish Laboratory, Lab for Scientific Computing (LabSC). The primary purpose of the library is not to be much use for actual machine learning, instead it is mostly an educational tool for me and possibly others. There exist mature machine learning libraries for many languages (e.g. \texttt{scikit-learn} for python) and I have neither the expertise nor the time to implement the algorithms in a complete (all the different options and statistical considerations) and efficient (well-optimised) manner.
+Machine learning as a field of independent academic study became popular in the early 1990s, developing out of the field of Artificial Intelligence, where research primarily went in different directions. Many of the algorithms used in machine learning were developed well before, but in the 1990s attention shifted to a statistical approach to learning, which led to the development of many new models. Also, the increase in available computing power enabled the use of many techniques that were previously infeasible, such as Monte-Carlo methods for models with analytically intractable parts. A last contributing factor to its popularity today is the increased availability of data through the internet, on which machine learning is used for data mining.
 
-\subsection{Algorithm sources}
-The algorithms as implemented are primarily based on lecture slide provided to me by my supervisor Dr. Anita Faul, with a few algorithms coming from \textit{Pattern Recognition and Machine Learning} (\cite{PRML}), which was also used for occasional clarification and a lot of statistical background.
+In Physics, machine learning has also found several applications, the most prominent of which is probably the processing of large data sets. In many areas of Physics, there are large experiments nowadays which generate large amounts of data which are infeasible for humans to look at. Learning algorithms are used to extract the interesting data that scientists work with to infer information about their models. Another use of machine learning in physics that is currently being developed is the use of learning algorithms to model complex systems. These are often many-body systems or materials which can't be modelled analytically and are too large for direct computational simulation, however relationships between different properties of the system can often be inferred by learning algorithms.
+
+%TODO
+
+The algorithms as implemented are primarily based on lecture slide provided to me by my supervisor Dr. Anita Faul, and \textit{Pattern Recognition and Machine Learning} (\cite{PRML}). For a few of the more complicated algorithms, I consulted the primary literature to gain more insight into the model used (as indicated in the respective descriptions).
+
+This report has two primary sections. Section 2 gives a description of all the algorithms that I researched and implemented in the library, while Section 3 explains the structure of the different parts of the library.
 
 
-\section{Structure}
+\section{Algorithms}
+This section contains some information on each of the algorithms implemented in this library. %TODO
+
+\subsection{Classification}
+Classification is a type of supervised learning, i.e. we are gives a set of training data for which we already know a quantity of interest and we want to make predictions about that quantity for future data. For classification, the quantity of interest is the class that a data-point is assigned to, i.e. a discrete label that partitions the data into multiple subsets.
+
+\subsubsection{Gaussian Naive Bayes'}
+The Gaussian Naive Bayes' classifier assumes that the data in each class comes from separate multivariate Gaussian distributions with mean $\bm{\mu}_k$ and covariance $\bm{\Sigma}_k$. The assumption made by a Naive Bayes' classifier is that the different features are conditionally independent given the class, which allows for faster calculation of the results since the covariance matrix is diagonal. With $\bm{\mu}_k$ and $\bm{\Sigma}_k$ estimated form the data, we can calculate the likelihood that a datum belongs to a specific class as
+
+\[ p(\mathbf{x} | \mathcal{C}_k) = \mathcal{N}(\mathbf{x} | \bm{\mu}_k, \bm{\Sigma}_k) = \frac{1}{\sqrt{2 \pi |\bm{\Sigma}_k|}} \exp\left(\frac{1}{2} (\mathbf{x} - \bm{\mu}_k)^T\bm{\Sigma}_k^{-1}(\mathbf{x} - \bm{\mu}_k)\right) \] 
+
+Then, using Bayes' Theorem and the number of training points for each class $n_k$ as the prior probability we get the posterior probability for the class
+
+\[ p(\mathcal{C}_k | \mathbf{x}) \propto p(\mathbf{x} | \mathcal{C}_k) p(\mathcal{C}_k) = n_k \mathcal{N}(\mathbf{x} | \bm{\mu}_k, \bm{\Sigma}_k)\]
+
+A point is then classified by which class gives the maximum posterior probability (often called the maximum a-posteriori value $\mathcal{C}_\textsc{map}$).
+
+The implementation can be used for both binary and multi-class classification, the number of classes used is determined by the keyword argument \texttt{K} of the constructor (default is 2).
+    
+\subsubsection{Discriminant Analysis}
+Discriminant Analysis is implemented as a binary classifier in both the linear and the quadratic variant. A point $\mathbf{x}$ is classified according to the sign of $\mathbf{x}^T\mathbf{Ax} + \mathbf{bx} + c$ where
+\begin{align*}
+\mathbf{A} &= \frac{1}{2} \left(\bm{\Sigma}_1^{-1} - \bm{\Sigma}_0^{-1}\right) \\
+\mathbf{b} &= \bm{\Sigma}_0^{-1}\bm{\mu}_0 - \bm{\Sigma}_1^{-1}\bm{\mu}_1 \\
+c &= \frac{1}{2} \left( \log\frac{|\bm{\Sigma}_1|}{|\bm{\Sigma}_0|} + \bm{\mu}_1^T\bm{\Sigma}_1^{-1}\bm{\mu}_1 - \bm{\mu}_0^T\bm{\Sigma}_0^{-1}\bm{\mu}_0 \right) \\
+\end{align*}
+and $\bm{\mu}_0$, $\bm{\mu}_1$, $\bm{\Sigma}_0$ and $\bm{\Sigma}_1$ are estimated from the training data and in the linear case, we assume $\bm{\Sigma}_0 = \bm{\Sigma}_1 \equiv \bm{\Sigma}$, which makes $\mathbf{A}$ vanish.
+
+The constructor takes a keyword argument \texttt{datype} which can be set to \texttt{`quadratic'} to use QDA, otherwise LDA is used.
+
+\subsubsection{k-Nearest-Neighbours}
+The k-Nearest-Neighbours algorithm is implemented with a kd-tree from the \texttt{scipy} library, since classification would otherwise have complexity $O(n + k \log n)$ per point where $n$ is the number of training points. The kd-tree manages to reduce this complexity to $O(k \log n)$, however it gets less effective if the number of dimensions is large.
+
+The number of nearest neighbours used is determined by the keyword argument \texttt{k} of the constructor (default is 3).
+
+\subsubsection{Support Vector Machine}
+The implementation of the SVM can use different kernels which can be set with the \texttt{kernel} keyword argument of the constructor. The default is a linear kernel, the argument \texttt{`rbf'} can be used to specify that the inbuilt gaussian radial basis function should be used and \texttt{`custom'} allows any kernel to be specified. If the rbf is used, the keyword argument \texttt{sigma} can be used to specify its width. The custom kernel function needs to be supplied via the \texttt{customK} argument and should be a function of two arguments, which should be able to handle being given a list of points for either argument to operate in a vectorised manner (actually, additionally it needs to accept \texttt{self} as its first argument).
+
+\subsubsection{Adaptive Boosting}
+The implementation of AdaBoost is as detailed in \cite{PRML} using one-level decision trees as weak learners (in the library as \texttt{DecisionBranch()}). The constructor takes as an argument the number of weak learners to use (which should not be chosen too high to avoid overfitting, but should be large enough to capture the structure of the data).
+
+A different weak learner can also be specified with the \texttt{baseClassifier} argument. This classifier should have the same structure as the others in this module, except that it must be able to train on a weighted data set, i.e. it should place more importance on the samples with higher weights. The weight is given as a third argument to the \texttt{train()} function.
+
+\subsubsection{Multi-Class Meta Classifiers}
+These two are a sort of meta-classifier, using any binary classifier to create a multi-class classifier. The number of classes and the base classifier are passed to the constructor in both cases. They differ in the approach and the total number of classifiers used. The One vs. All (also called One vs. Rest or One vs. Many) uses $K$ classifiers, where the One vs. One classifier uses $\frac{K(K-1)}{2} = O(K^2)$ classifiers.
+
+
+\subsection{Regression}
+
+
+\subsection{Clustering}
+\subsubsection{K-Means}
+
+\subsubsection{Gaussian Mixture Model}
+
+\subsubsection{Dirichlet Process Mixture Model}
+
+
+\subsection{Other Algorithms}
+\subsubsection{Data normalisation}
+
+\subsubsection{Principle Component Analysis}
+
+\subsubsection{Linear Discriminant Analysis}
+
+
+\section{Library Structure}
 The library is divided into several modules corresponding to different general areas in machine learning. This section will give an overview of how the algorithms in the different modules are used, while section 3 contains documentation for each individual algorithm.
 
 For some of the iterative algorithms, the class will contain a method called \texttt{getIterationData(i)} which will return the relevant data from the \texttt{i}th iteration. The return type varies with the algorithm, so this is not an interface where different algorithms can just be swapped out in general (there may be groups of algorithms with similar intermediate data).
@@ -56,6 +131,8 @@ class Classifier:
     # For multi-class classifiers, the result is just
     # the number of the class.
 \end{lstlisting}
+
+\subsection{\texttt{m2l2.regression}}
 
 \subsection{\texttt{m2l2.clustering}}
 Clustering is a form of unsupervised learning where the aim is to find groups of points that lie close together and separated from others in data-space. The probabilistic models on which the algorithms in this module are based are discrete latent-variable models
@@ -89,7 +166,7 @@ class Clustering:
     # parameters (mean etc.) of the clusters
 \end{lstlisting}
 
-\subsection{\texttt{m2l2.utils}}
+\subsection{\texttt{m2l2.misc}}
 This module contains a few routines for data preprocessing and dimensionality reduction. The routines are implemented as simple functions that return the processed dataset.
 
 \begin{lstlisting}[frame=TLbr,breaklines=true]
@@ -104,56 +181,12 @@ def process_data(X, options, return_parameters=False):
 \end{lstlisting}
 
 
-\section{Documentation}
-This section contains some information on each of the algorithms implemented in this library. Usually the information is mostly on my implementation, motivation for them and derivation should be found in the relevant textbook or lecture notes of your choice.
+\section{Conclusion}
 
-\subsection{\texttt{m2l2.classification}}
-\subsubsection{Gaussian Naive Bayes' (as class \texttt{NaiveBayes()})}
-The Gaussian Naive Bayes' classifier assumes that the data comes from multivariate Gaussian distributions with mean $\bm{\mu}$ and covariance matrix $\bm{\Sigma}$ which we estimate from the training data. This gives a likelihood $p(\mathbf{x} | \mathcal{C}_k) = \mathcal{N}(\mathbf{x} | \bm{\mu}_k, \bm{\Sigma}_k) = \frac{1}{\sqrt{2 \pi |\bm{\Sigma}_k|}} \exp\left(\frac{1}{2} (\mathbf{x} - \bm{\mu}_k)^T\bm{\Sigma}_k^{-1}(\mathbf{x} - \bm{\mu}_k)\right)$ and using the number of training points for each class as the prior probability we get the posterior probability $p(\mathcal{C}_k | \mathbf{x}) \propto \mathcal{N}(\mathbf{x} | \bm{\mu}_k, \bm{\Sigma}_k) p(\mathcal{C}_k)$ from Bayes' Theorem. A point is then classified by which class gives the maximum posterior probability.
-
-The implementation can be used for both binary and multi-class classification, the number of classes used is determined by the keyword argument \texttt{K} of the constructor (default is 2).
-    
-\subsubsection{Discriminant Analysis (as class \texttt{DA()})}
-Discriminant Analysis is implemented as a binary classifier in both the linear and the quadratic variant. A point $\mathbf{x}$ is classified according to the sign of $\mathbf{x}^T\mathbf{Ax} + \mathbf{bx} + c$ where
-\begin{align*}
-\mathbf{A} &= \frac{1}{2} \left(\bm{\Sigma}_1^{-1} - \bm{\Sigma}_0^{-1}\right) \\
-\mathbf{b} &= \bm{\Sigma}_0^{-1}\bm{\mu}_0 - \bm{\Sigma}_1^{-1}\bm{\mu}_1 \\
-c &= \frac{1}{2} \left( \log\frac{|\bm{\Sigma}_1|}{|\bm{\Sigma}_0|} + \bm{\mu}_1^T\bm{\Sigma}_1^{-1}\bm{\mu}_1 - \bm{\mu}_0^T\bm{\Sigma}_0^{-1}\bm{\mu}_0 \right) \\
-\end{align*}
-and $\bm{\mu}_0$, $\bm{\mu}_1$, $\bm{\Sigma}_0$ and $\bm{\Sigma}_1$ are estimated from the training data and in the linear case, we assume $\bm{\Sigma}_0 = \bm{\Sigma}_1 \equiv \bm{\Sigma}$, which makes $\mathbf{A}$ vanish.
-
-The constructor takes a keyword argument \texttt{datype} which can be set to \texttt{`quadratic'} to use QDA, otherwise LDA is used.
-
-\subsubsection{k-Nearest-Neighbours (as class \texttt{kNN()})}
-The k-Nearest-Neighbours algorithm is implemented with a kd-tree from the \texttt{scipy} library, since classification would otherwise have complexity $O(n + k \log n)$ per point where $n$ is the number of training points. The kd-tree manages to reduce this complexity to $O(k \log n)$, however it gets less effective if the number of dimensions is large.
-
-The number of nearest neighbours used is determined by the keyword argument \texttt{k} of the constructor (default is 3).
-
-\subsubsection{Support Vector Machine (as class \texttt{SVM()})}
-The implementation of the SVM can use different kernels which can be set with the \texttt{kernel} keyword argument of the constructor. The default is a linear kernel, the argument \texttt{`rbf'} can be used to specify that the inbuilt gaussian radial basis function should be used and \texttt{`custom'} allows any kernel to be specified. If the rbf is used, the keyword argument \texttt{sigma} can be used to specify its width. The custom kernel function needs to be supplied via the \texttt{customK} argument and should be a function of two arguments, which should be able to handle being given a list of points for either argument to operate in a vectorised manner (actually, additionally it needs to accept \texttt{self} as its first argument).
-
-\subsubsection{Adaptive Boosting (as class \texttt{AdaBoost()})}
-The implementation of AdaBoost is as detailed in \cite{PRML} using one-level decision trees as weak learners (in the library as \texttt{DecisionBranch()}). The constructor takes as an argument the number of weak learners to use (which should not be chosen too high to avoid overfitting, but should be large enough to capture the structure of the data).
-
-A different weak learner can also be specified with the \texttt{baseClassifier} argument. This classifier should have the same structure as the others in this module, except that it must be able to train on a weighted data set, i.e. it should place more importance on the samples with higher weights. The weight is given as a third argument to the \texttt{train()} function.
-
-\subsubsection{One vs. All and One vs. One (as classes \texttt{OVA()} and \texttt{OVO()})}
-These two are a sort of meta-classifier, using any binary classifier to create a multi-class classifier. The number of classes and the base classifier are passed to the constructor in both cases. They differ in the approach and the total number of classifiers used. The One vs. All (also called One vs. Rest or One vs. Many) uses $K$ classifiers, where the One vs. One classifier uses $\frac{K(K-1)}{2} = O(K^2)$ classifiers.
-
-\subsection{\texttt{m2l2.clustering}}
-\subsubsection{K-Means (as class \texttt{kMeans})}
-
-\subsubsection{Gaussian Mixture Model (as class \texttt{GaussianMixtureEM}}
-
-\subsection{\texttt{m2l2.utils}}
-\subsubsection{Data normalisation (as function \texttt{normalise})}
-
-\subsubsection{Principle Component Analysis (as function \texttt{PCA})}
-
-\subsubsection{Linear Discriminant Analysis (as function \texttt{LDA})}
 
 \begin{thebibliography}{9}
 \bibitem{PRML} C.M. Bishop, \emph{Pattern Recognition and Machine Learning}, Springer, 2007
+
 \end{thebibliography}
 
 \end{document}
