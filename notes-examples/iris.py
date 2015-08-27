@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.datasets import load_iris
 from matplotlib.colors import ListedColormap
-from m2l2.classification import DA, NaiveBayes, kNN, SVM, AdaBoost
+from m2l2.classification import DA, NaiveBayes, kNN, SVM, AdaBoost, Perceptron
 
 ## Data generation
 data = load_iris()
@@ -13,6 +13,10 @@ y = data.target
 X = X[:,[0,1]]
 X = X[y != 2]
 y = y[y != 2]
+Xy = np.column_stack((X,y))
+np.random.shuffle(Xy)
+X = Xy[:,0:2]
+y = Xy[:,2]
 
 ## set up plot
 x_min, x_max = X[:, 0].min(), X[:, 0].max()
@@ -35,7 +39,7 @@ plt.title('Fisher Iris Data')
 
 
 ## model
-classy = NaiveBayes()
+classy = Perceptron(alpha=0.01, passes=20)
 classy.train(X, y)
 
 

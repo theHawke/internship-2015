@@ -76,10 +76,13 @@ The implementation uses kd-trees from the \texttt{scipy} library to achieve the 
 \subsubsection{Support Vector Machine} %TODO
 The implementation of the SVM can use different kernels which can be set with the \texttt{kernel} keyword argument of the constructor. The default is a linear kernel, the argument \texttt{`rbf'} can be used to specify that the inbuilt gaussian radial basis function should be used and \texttt{`custom'} allows any kernel to be specified. If the rbf is used, the keyword argument \texttt{sigma} can be used to specify its width. The custom kernel function needs to be supplied via the \texttt{customK} argument and should be a function of two arguments, which should be able to handle being given a list of points for either argument to operate in a vectorised manner (actually, additionally it needs to accept \texttt{self} as its first argument).
 
-\subsubsection{Adaptive Boosting}
+\subsubsection{Adaptive Boosting} %TODO
 The implementation of AdaBoost is as detailed in \cite{PRML} using one-level decision trees as weak learners (in the library as \texttt{DecisionBranch()}). The constructor takes as an argument the number of weak learners to use (which should not be chosen too high to avoid overfitting, but should be large enough to capture the structure of the data).
 
 A different weak learner can also be specified with the \texttt{baseClassifier} argument. This classifier should have the same structure as the others in this module, except that it must be able to train on a weighted data set, i.e. it should place more importance on the samples with higher weights. The weight is given as a third argument to the \texttt{train()} function.
+
+\subsubsection{Online Learning Algorithms}
+%TODO Perceptron and PA
 
 \subsubsection{Multi-Class Meta Classifiers}
 Since many classifiers are by design restricted to two classes to take advantage of certain mathematical properties (e.g. Discriminant Analysis, SVM), the one-vs-all (OVA) and one-vs-one (OVO) strategies are a way of combining several binary classifiers to construct a mult-class classifier.
@@ -90,7 +93,7 @@ The OVO strategy uses $\frac{k(k-1)}{2}$ classifiers, one for every pair of clas
 
 
 \subsection{Regression}
-
+%TODO
 
 \subsection{Clustering}
 \subsubsection{K-Means}

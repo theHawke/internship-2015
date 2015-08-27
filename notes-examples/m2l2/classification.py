@@ -127,39 +127,29 @@ class kNN:
             return cls[np.argmin([np.mean(dist[ind == cl]) for cl in cls])]
 
 
-class PA:
-    """Passive-Aggressive online-learning algorithm"""
+class Perceptron:
+    def __init__(self, alpha = 0.1, passes=10):
+        self._alpha = max(0, min(1, alpha))
+        self._np = passes
 
     def train(self, X, y):
-        # add bias component to each vector
-        X = np.column_stack((np.ones(y.size),X))
+        X = np.column_stack((np.ones_like(y), X))
+        c = y*2-1
+        N, M = X.shape
 
-        # label classes as -1, 1 instead of 0, 1
-        ci = y * 2 - 1
+        w = np.zeros(M)
 
-        # initialise w
-        w = np.zeros(X.shape[1])
-
-        # create array to keep track of history
-        self.ws = np.empty(X.shape)
-
-        for i in range(y.size):
-            if ci[i]*np.dot(w,X[i]) < 1:
-                f = lambda x: np.dot(x-w,x-w)
-                dfdx = lambda x: 2*(x-w)
-                cons = lambda x: ci[i]*np.dot(x,X[i]) - 1
-                # perform the constrained minimisation
-                w = fmin_slsqp(f, X[i]/np.dot(X[i],X[i]),
-                               eqcons=[cons], fprime=dfdx, disp=0)
-            self.ws[i] = w
+        for _ in range(self._np):
+            for i in range(N):
+                predict = np.sign(np.dot(w, X[i,:]))
+                if predict != c[i]:
+                    w = w + self._alpha/2.0 * (c[i] - predict) * X[i,:]
 
         self._w = w
+        print(w)
 
     def classify(self, x):
-        return self._w[0] + np.dot(x, self._w[1:])
-
-    def getIterationData(self, i):
-        return self.ws[i]
+        return np.dot(x, self._w[1:]) + self._w[0]
 
 
 class SVM:
@@ -176,7 +166,7 @@ class SVM:
             asq = np.sum(diffsq)
         return np.exp(self._nitssq*asq)
 
-    def _biasDot(self, x1, x2):
+    def _biasDot(x1, x2):
         return np.dot(x1, x2) + 1
 
     def __init__(self, kernel='linear', sigma=1, customK=None):
@@ -190,7 +180,7 @@ class SVM:
                     the 'custom' option for the kernel.")
             self._kernel = customK
         else: # if kernel == 'linear'
-            self._kernel = self._biasDot
+            self._kernel = SVM._biasDot
 
     def train(self, X, y):
         # label classes as -1, 1 instead of 0, 1
@@ -225,6 +215,41 @@ class SVM:
             return np.apply_along_axis(self._class, 1, x)
         else:
             return self._class(x)
+
+
+class PA:
+    """Passive-Aggressive online-learning algorithm"""
+
+    def train(self, X, y):
+        # add bias component to each vector
+        X = np.column_stack((np.ones(y.size),X))
+
+        # label classes as -1, 1 instead of 0, 1
+        ci = y * 2 - 1
+
+        # initialise w
+        w = np.zeros(X.shape[1])
+
+        # create array to keep track of history
+        self.ws = np.empty(X.shape)
+
+        for i in range(y.size):
+            if ci[i]*np.dot(w,X[i]) < 1:
+                f = lambda x: np.dot(x-w,x-w)
+                dfdx = lambda x: 2*(x-w)
+                cons = lambda x: ci[i]*np.dot(x,X[i]) - 1
+                # perform the constrained minimisation
+                w = fmin_slsqp(f, X[i]/np.dot(X[i],X[i]),
+                               eqcons=[cons], fprime=dfdx, disp=0)
+            self.ws[i] = w
+
+        self._w = w
+
+    def classify(self, x):
+        return self._w[0] + np.dot(x, self._w[1:])
+
+    def getIterationData(self, i):
+        return self.ws[i]
 
 
 class DecisionBranch:
