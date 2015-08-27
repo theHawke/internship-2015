@@ -51,25 +51,29 @@ Then, using Bayes' Theorem and the number of training points for each class $n_k
 
 A point is then classified by which class gives the maximum posterior probability (often called the maximum a-posteriori value $\mathcal{C}_\textsc{map}$).
 
-The implementation can be used for both binary and multi-class classification, the number of classes used is determined by the keyword argument \texttt{K} of the constructor (default is 2).
+Since $\mathcal{C}_\textsc{map}$ is used to determine the class, Naive Bayes' can be used with any number of classes. The implementation automatically detects how many classes are in the model and in the case of two classes will return the log of the ratios of the posteriors while for multiple classes it will return the class label.
     
 \subsubsection{Discriminant Analysis}
-Discriminant Analysis is implemented as a binary classifier in both the linear and the quadratic variant. A point $\mathbf{x}$ is classified according to the sign of $\mathbf{x}^T\mathbf{Ax} + \mathbf{bx} + c$ where
+Discriminant analysis has a similar starting point to the Naive Bayes' classifier. It only works on two classes and assumes that they are normal-distributed with mean $\bm{\mu}_k$ and covariance $\bm{\Sigma}_k$ where $k = 0,1$ respectively which are obtained from the training data. Unlike Naive Bayes', it does not make the assumption of conditional independence, however, the Linear Discriminant Analysis (LDA) variant makes the assumption that both classes are distributed with the same covariance (in practice we use the average of the two covariances). Looking at the likelihood ratio, we get
+\[ \frac{p(\mathbf{x} | \mathcal{C}_1)}{p(\mathbf{x} | \mathcal{C}_0)} = \frac{|\bm{\Sigma}_0|}{|\bm{\Sigma}_1|} \exp \left\lbrace \frac{1}{2} \left( (\mathbf{x} - \bm{\mu}_0)^T \bm{\Sigma}_0^{-1} (\mathbf{x} - \bm{\mu}_0) - (\mathbf{x} - \bm{\mu}_1)^T \bm{\Sigma}_1^{-1} (\mathbf{x} - \bm{\mu}_1) \right) \right\rbrace \]
+Taking the log of this quantity and rearranging slightly, we can classify a point $\mathbf{x}$ according to the sign of $\mathbf{x}^T\mathbf{Ax} + \mathbf{bx} + c$ where
 \begin{align*}
-\mathbf{A} &= \frac{1}{2} \left(\bm{\Sigma}_1^{-1} - \bm{\Sigma}_0^{-1}\right) \\
-\mathbf{b} &= \bm{\Sigma}_0^{-1}\bm{\mu}_0 - \bm{\Sigma}_1^{-1}\bm{\mu}_1 \\
-c &= \frac{1}{2} \left( \log\frac{|\bm{\Sigma}_1|}{|\bm{\Sigma}_0|} + \bm{\mu}_1^T\bm{\Sigma}_1^{-1}\bm{\mu}_1 - \bm{\mu}_0^T\bm{\Sigma}_0^{-1}\bm{\mu}_0 \right) \\
+\mathbf{A} &= \frac{1}{2} \left(\bm{\Sigma}_0^{-1} - \bm{\Sigma}_1^{-1}\right) \\
+\mathbf{b} &= \bm{\Sigma}_1^{-1}\bm{\mu}_1 - \bm{\Sigma}_0^{-1}\bm{\mu}_0 \\
+c &= \frac{1}{2} \left( \log\frac{|\bm{\Sigma}_0|}{|\bm{\Sigma}_1|} + \bm{\mu}_0^T\bm{\Sigma}_0^{-1}\bm{\mu}_0 - \bm{\mu}_1^T\bm{\Sigma}_1^{-1}\bm{\mu}_1 \right) \\
 \end{align*}
-and $\bm{\mu}_0$, $\bm{\mu}_1$, $\bm{\Sigma}_0$ and $\bm{\Sigma}_1$ are estimated from the training data and in the linear case, we assume $\bm{\Sigma}_0 = \bm{\Sigma}_1 \equiv \bm{\Sigma}$, which makes $\mathbf{A}$ vanish.
+For LDA, $A$ and the first term in $c$ will vanish since the covariances are equal, leaving only $ \mathbf{bx} + c$, whereas for Quadratic Discriminant Analysis (QDA) the full expression is used.
 
-The constructor takes a keyword argument \texttt{datype} which can be set to \texttt{`quadratic'} to use QDA, otherwise LDA is used.
+The implementation takes a keyword argument \texttt{datype} in its constructor which can be set to \texttt{`quadratic'} to use QDA, otherwise LDA is used.
 
 \subsubsection{k-Nearest-Neighbours}
-The k-Nearest-Neighbours algorithm is implemented with a kd-tree from the \texttt{scipy} library, since classification would otherwise have complexity $O(n + k \log n)$ per point where $n$ is the number of training points. The kd-tree manages to reduce this complexity to $O(k \log n)$, however it gets less effective if the number of dimensions is large.
+The k-Nearest-Neighbours (kNN) algorithm is a conceptually very simple algorithm that classifies points according to the most common class among the k closest points from the training set.
 
-The number of nearest neighbours used is determined by the keyword argument \texttt{k} of the constructor (default is 3).
+The biggest problem with it is that the entire training set has to be considered for each point that is classified. A naive implementation that computes the distance to every training point has complexity $O(n + k \log k)$ using partial sorting. More sophisticated algorithms use data structures aware of the space in which the points lie (often some form of metric tree) which are constructed at training time, but reduce the classification complexity to something like $O(k \log n)$. kNN also suffers strongly from the curse of dimensionality, as many of the data structures become inefficient at high dimensions and also, many points will have similar distances, making the lookup less reliable.
 
-\subsubsection{Support Vector Machine}
+The implementation uses kd-trees from the \texttt{scipy} library to achieve the $O(k \log n)$ complexity (in low dimensions) and the number $k$ of nearest neighbours used is determined by the keyword argument \texttt{k} of the constructor (default is 1).
+
+\subsubsection{Support Vector Machine} %TODO
 The implementation of the SVM can use different kernels which can be set with the \texttt{kernel} keyword argument of the constructor. The default is a linear kernel, the argument \texttt{`rbf'} can be used to specify that the inbuilt gaussian radial basis function should be used and \texttt{`custom'} allows any kernel to be specified. If the rbf is used, the keyword argument \texttt{sigma} can be used to specify its width. The custom kernel function needs to be supplied via the \texttt{customK} argument and should be a function of two arguments, which should be able to handle being given a list of points for either argument to operate in a vectorised manner (actually, additionally it needs to accept \texttt{self} as its first argument).
 
 \subsubsection{Adaptive Boosting}
@@ -78,7 +82,11 @@ The implementation of AdaBoost is as detailed in \cite{PRML} using one-level dec
 A different weak learner can also be specified with the \texttt{baseClassifier} argument. This classifier should have the same structure as the others in this module, except that it must be able to train on a weighted data set, i.e. it should place more importance on the samples with higher weights. The weight is given as a third argument to the \texttt{train()} function.
 
 \subsubsection{Multi-Class Meta Classifiers}
-These two are a sort of meta-classifier, using any binary classifier to create a multi-class classifier. The number of classes and the base classifier are passed to the constructor in both cases. They differ in the approach and the total number of classifiers used. The One vs. All (also called One vs. Rest or One vs. Many) uses $K$ classifiers, where the One vs. One classifier uses $\frac{K(K-1)}{2} = O(K^2)$ classifiers.
+Since many classifiers are by design restricted to two classes to take advantage of certain mathematical properties (e.g. Discriminant Analysis, SVM), the one-vs-all (OVA) and one-vs-one (OVO) strategies are a way of combining several binary classifiers to construct a mult-class classifier.
+
+The OVA strategy uses $k$ classifiers for $k$-class classification, each of which uses the points in one class against all the other points. It selects the class which gets the highest score against all the others. A problem with this approach is that the classifiers get skewed distributions (one small class and one very large class) which can be a problem depending on the underlying classifier used (example: see figure %TODO OVA LDA figure% ).
+
+The OVO strategy uses $\frac{k(k-1)}{2}$ classifiers, one for every pair of classes. The class is determined by majority vote of the classifiers which can lead to ties between classes, but those can usually be resolved by looking at the direct comparison between the tied classes. While it has the advantage against OVA of giving even distributions to the underlying classifiers, it is computationally more expensive as the number of classes grows.
 
 
 \subsection{Regression}

@@ -14,6 +14,9 @@ def GaussLikely(xy, mu, var):
     return np.exp(arg) / np.sqrt(2*np.pi*np.product(var))
 
 class NaiveBayes:
+    """A Naive Bayes' classifier, can be used for binary- or multi-
+    class classification.
+    """
     def train(self, X, y):
         # determine the number of classes
         self._cl = np.unique(y)
@@ -75,22 +78,22 @@ class DA:
 
         # classification is done according to the sign of
         # xAx + bx + c
-        self.A = (icov1 - icov0) / 2
+        self.A = (icov0 - icov1) / 2
 
-        self.b = np.dot(icov0, mu0) - np.dot(icov1, mu1)
+        self.b = np.dot(icov1, mu1) - np.dot(icov0, mu0)
 
-        self.c = (np.log(np.linalg.det(cov1)/np.linalg.det(cov0))
-                  + np.dot(mu1, np.dot(icov1, mu1))
-                  - np.dot(mu0, np.dot(icov0, mu0))) / 2
+        self.c = (np.log(np.linalg.det(cov0)/np.linalg.det(cov1))
+                  + np.dot(mu0, np.dot(icov0, mu0))
+                  - np.dot(mu1, np.dot(icov1, mu1))) / 2
 
     def classify(self, x):
-        return -(np.dot(x, np.dot(self.A, x)) + np.dot(self.b, x) + self.c)
+        return np.dot(x, np.dot(self.A, x)) + np.dot(self.b, x) + self.c
 
 
 class kNN:
     """A k-Nearest-Neighbours classifier (implemented using KDTrees)"""
 
-    def __init__(self, k = 3):
+    def __init__(self, k = 1):
         self._k = k # number of nearest neighbours
 
     def train(self, X, y):
@@ -159,10 +162,6 @@ class PA:
         return self.ws[i]
 
 
-def abssq(x):
-    """returns the squared norm ⟨x,x⟩ of the input vector"""
-    return np.dot(x,x)
-
 class SVM:
     """A two-class Support Vector Machine Classifier,
     can use a custom kernel function (default is linear).
@@ -170,11 +169,11 @@ class SVM:
 
     def _rbf(self, x1, x2):
         """A Gaussian Radial Basis Function for use as a kernel"""
-        diff = x1-x2
+        diffsq = (x1-x2)**2
         if diff.ndim > 1:
-            asq = np.apply_along_axis(abssq, 1, diff)
+            asq = np.sum(diffsq, axis=1)
         else:
-            asq = abssq(diff)
+            asq = np.sum(diffsq)
         return np.exp(self._nitssq*asq)
 
     def _biasDot(self, x1, x2):

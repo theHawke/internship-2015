@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.datasets import load_iris
 from matplotlib.colors import ListedColormap
-from m2l2.classification import kNN, NaiveBayes, SVM, DA, OVA, OVO
+from m2l2.classification import kNN, NaiveBayes, DA, OVA, OVO
 
 ## Data generation
 data = load_iris()
@@ -23,7 +23,7 @@ y_min, y_max = y_min - vsp, y_max + vsp
 
 # just plot the dataset first
 cm = plt.cm.RdBu
-cm_bright = ListedColormap(['#FF0000', '#0000FF', '#00FF00'])
+cm_bright = ListedColormap(['#FF0000', '#00FF00', '#0000FF'])
 ax = plt.axes()
 ax.scatter(X[:, 0], X[:, 1], c=y, cmap=cm_bright)
 ax.set_xlim(x_min, x_max)
@@ -34,7 +34,7 @@ plt.title('Fisher Iris Data')
 
 
 ## model, works with OVA, OVO, NaiveBayes, kNN
-multi_classy = NaiveBayes()
+multi_classy = OVA(3, DA(datype='quadratic'))
 multi_classy.train(X, y)
 
 
